@@ -222,6 +222,11 @@ TokenList* tokenize(const char* file_path){
                 {
                     // this is a comment lexeme
                     for (; peek() != '\n' && current < source_len; advance());
+                } else if (match('*')){
+                    // this is a multiline comment lexeme
+                    for (; peek() != '*' && peekNext() != '/' && current < source_len; advance());
+                    advance();
+                    advance();
                 } else addToken(tokenlist, SLASH, NULL);
 
                 }; break;

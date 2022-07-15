@@ -1,6 +1,8 @@
-var x = "hello world";
-var cool = 6;
-
-if (len(x) < 30 and cool == 25){
-    print "epic";
+fun /* comment */ factorial(n){
+    if (n == 1) return 1;
+    /* hehe
+    hoho
+    hihi
+    */
+    return n * fun(n-1);
 }
