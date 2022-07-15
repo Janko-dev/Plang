@@ -1,0 +1,6 @@
+var x = "hello world";
+var cool = 25;
+
+if (len(x) < 30 && cool == 25){
+    print "epic";
+}

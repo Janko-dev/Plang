@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -Wextra -g
-IN = lexer.c main.c
+IN = lexer.c hashtable.c main.c
 OUT = out
 
 make: $(IN)

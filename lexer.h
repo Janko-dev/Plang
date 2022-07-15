@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
+#include <ctype.h>
+#include <stdarg.h>
+
+#include "hashtable.h"
 
 enum TokenTypes {
     // single-character tokens
@@ -22,9 +26,8 @@ enum TokenTypes {
 
     // keywords
     AND, OR, PRINT, IF, ELSE, TRUE, FALSE, NIL,
-    FOR, WHILE, FUN, RETURN, CLASS, SUPER, THIS,
-
-    ENDFILE
+    FOR, WHILE, FUN, RETURN, CLASS, SUPER, THIS, VAR,
+    ENDFILE,
 };
 
 typedef struct {

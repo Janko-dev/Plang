@@ -12,11 +12,16 @@ long source_len;
 const char* token_strings[] = {   
     "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE", "COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR",
     "BANG", "BANG_EQUAL", "EQUAL", "EQUAL_EQUAL", "GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL", "IDENTIFIER", "STRING", "NUMBER",
-    "AND", "OR", "PRINT", "IF", "ELSE", "TRUE", "FALSE", "NIL", "FOR", "WHILE", "FUN", "RETURN", "CLASS", "SUPER", "THIS", "ENDFILE"
+    "AND", "OR", "PRINT", "IF", "ELSE", "TRUE", "FALSE", "NIL", "FOR", "WHILE", "FUN", "RETURN", "CLASS", "SUPER", "THIS", "VAR", "ENDFILE"
 };
 
-void plang_error(int line, const char* message){
-    fprintf(stderr, "[Line %d] Error: %s\n", line, message);
+void plang_error(int line, const char* message, ...){
+    fprintf(stderr, "[Line %d] Error: ", line);
+    va_list args;
+    va_start(args, message);
+    vfprintf(stderr, message, args);
+    va_end(args);
+    fprintf(stderr, "\n");
     hadError = true;
 }
 
@@ -36,10 +41,15 @@ char peek(){
     return source[current];
 }
 
+char peekNext(){
+    if (current + 1 >= source_len) return '\0';
+    return source[current + 1];
+}
+
 void initTokenList(TokenList* list){
     list->tokens = (Token*)malloc(sizeof(Token) * INITIAL_TOKENLIST_SIZE);
     if (list->tokens == NULL){
-        plang_error(line, "Malloc failed.");
+        plang_error(line, "Malloc failed at init token list");
     }
     list->index = 0;
     list->size = INITIAL_TOKENLIST_SIZE;
@@ -54,16 +64,16 @@ void addToken(TokenList* list, enum TokenTypes type, void* literal){
     if (type != ENDFILE){
         lexeme = malloc(current - start);
         if (lexeme == NULL){
-            plang_error(line, "Malloc failed.");
+            plang_error(line, "Malloc failed in lexeme with type: %s", token_strings[type]);
         }
         for (int i = start; i <= current; i++) lexeme[i-start] = source[i];
-        lexeme[current-start] = '\0';    
+        lexeme[current-start] = '\0';
     } else {
         lexeme = malloc(1);
         if (lexeme == NULL){
-            plang_error(line, "Malloc failed.");
+            plang_error(line, "Malloc failed in lexeme with type: %s", token_strings[type]);
         }
-        lexeme[0] = '\0';
+        *lexeme = '\0';
     }
     list->tokens[list->index++] = (Token){.line=line, .type=type, .literal=literal, .lexeme=lexeme};
 }
@@ -83,7 +93,7 @@ void addString(TokenList* list){
     char* literal = malloc(current - start - 2 + 1); // +1 for '\0'
     
     if (literal == NULL) {
-        plang_error(line, "Malloc failed");
+        plang_error(line, "Malloc failed in string tokenization.");
         exit(1);
     }
     int i;
@@ -93,8 +103,51 @@ void addString(TokenList* list){
     addToken(list, STRING, literal);
 }
 
+void addNumber(TokenList* list){
+    while (isdigit(peek())) advance();
+
+    if (peek() == '.' && isdigit(peekNext())){
+        advance(); // consume dot '.'
+        while (isdigit(peek())) advance();
+    }
+    char* strliteral = malloc(current - start + 1);
+    double* literal = malloc(sizeof(double)); 
+    int i;
+    for (i = start; i < current; i++) strliteral[i-start] = source[i];
+    strliteral[i-start] = '\0';
+    *literal = atof(strliteral);
+    addToken(list, NUMBER, literal);
+}
+
+void addIdentifier(TokenList* list){
+    while(isalnum(peek())) advance();
+
+    char* text = malloc(current - start + 1);
+    int i;
+    
+    for (i = start; i < current; i++) text[i-start] = source[i];
+    text[i-start] = '\0';
+
+    printf("TEXT: %s | %ld | %ld | %d\n", text, start, current, i);
+    Hashlist* h = lookup(text);
+    free(text);
+    
+    int type;
+    if (h == NULL) {
+        type = IDENTIFIER;
+    } else {
+        printf("KEY: %s | VAL: %d\n", h->key, h->val);
+        type = h->val; 
+    }
+    addToken(list, type, NULL);
+    
+}
+
 void freeTokenList(TokenList* list){
-    for (size_t i = 0; i < list->index; i++) free(list->tokens[i].lexeme);
+    for (size_t i = 0; i < list->index; i++) {
+        free(list->tokens[i].lexeme);
+        free(list->tokens[i].literal);
+    }
     free(list->tokens);
     list->tokens = NULL; // don't want dangling values (use after free!)
     list->index = list->size = 0;
@@ -108,14 +161,14 @@ char* read_source_file(const char* file_path){
         exit(1);
     }
     fseek(source_file, 0L, SEEK_END);
-    long size = ftell(source_file) - 2;
+    long size = ftell(source_file);
     fseek(source_file, 0L, SEEK_SET);
     char* source = malloc(size);
     if (source == NULL) {
         plang_error(line, "couldn't allocate memory for source file.");
         exit(1);
     }
-    fread(source, 1, size, source_file);
+    fread(source, size, 1, source_file);
     source[size] = '\0';
     fclose(source_file);
     return source;
@@ -127,11 +180,28 @@ TokenList* tokenize(const char* file_path){
     TokenList* tokenlist = (TokenList*)malloc(sizeof(TokenList));
     initTokenList(tokenlist);
 
-    //printf("SOURCE (%ld):\n%s\n", source_len, source);
+    put("and", AND);
+    put("or",  OR);
+    put("print", PRINT);
+    put("if", IF);
+    put("else", ELSE);
+    put("true", TRUE);
+    put("false", FALSE);
+    put("nil", NIL);
+    put("for", FOR);
+    put("while", WHILE);
+    put("fun", FUN);
+    put("return", RETURN);
+    put("class", CLASS);
+    put("super", SUPER);
+    put("this", THIS);
+    put("var", VAR);
+
+    printf("SOURCE (%ld):\n%s\n", source_len, source);
     while(current < source_len){
         start = current;
 
-        char c = advance(source);
+        char c = advance();
         switch(c){
             case '(': addToken(tokenlist, LEFT_PAREN, NULL); break;
             case ')': addToken(tokenlist, RIGHT_PAREN, NULL); break;
@@ -155,23 +225,28 @@ TokenList* tokenize(const char* file_path){
                 } else addToken(tokenlist, SLASH, NULL);
 
                 }; break;
+            
             case ' ':
             case '\r':
             case '\t':
                 break;
+
             case '\n': line++; break;
 
             case '"': addString(tokenlist); break;
-
-            default: plang_error(line, "Unexpected character."); break;
+            case '\0': break;
+            default: {
+                if (isdigit(c)){
+                    addNumber(tokenlist);
+                } else if (isalpha(c)) {
+                    addIdentifier(tokenlist);
+                } else {
+                    plang_error(line, "Unexpected character %c.", c);
+                }
+            } break;
         }
-        // printf("\t[Line %d] %s, literal %s\n", 
-        //     tokenlist->tokens[tokenlist->index-1].line,  
-        //     tokenlist->tokens[tokenlist->index-1].lexeme,
-        //     (char*)tokenlist->tokens[tokenlist->index-1].literal);
     }
     addToken(tokenlist, ENDFILE, NULL);
-    free(source);
 
     return tokenlist;
 }

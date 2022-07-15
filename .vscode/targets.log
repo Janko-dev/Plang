@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Fri Jul 15 16:00:44 2022
+# Make data base, printed on Fri Jul 15 21:00:11 2022
 
 # Variables
 
@@ -19,7 +19,6 @@ make.exe: *** No rule to make target `all'.  Stop.
 # automatic
 ?F = $(notdir $?)
 # makefile
- 
 MAKEFLAGS = Rrqp
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
@@ -33,10 +32,11 @@ HOMEDRIVE = C:
 ^D = $(patsubst %/,%,$(dir $^))
 # makefile
 CURDIR := /c/Users/janba/C-dev/Plang
+ 
 # default
 SHELL := /bin/sh
 # makefile (from `Makefile', line 3)
-IN = lexer.c main.c
+IN = lexer.c hashtable.c main.c
 # environment
 WINDIR = C:\WINDOWS
 # environment
@@ -190,7 +190,6 @@ PROCESSOR_REVISION = 7100
 # default
 .INCLUDE_DIRS = /usr/include /usr/include
 # environment
- 
 MAKELEVEL := 0
 # environment
 LANG = C
@@ -211,9 +210,9 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 
 # Directories
 
-# . (device -13143, inode 2693585): 9 files, no impossibilities.
+# . (device -13143, inode 2693585): 13 files, no impossibilities.
 
-# 9 files, no impossibilities in 1 directories.
+# 13 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -251,7 +250,7 @@ lexer.c:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-07-15 16:00:34
+#  Last modified 2022-07-15 21:00:10
 #  File has been updated.
 #  Successfully updated.
 # variable set hash-table stats:
@@ -263,7 +262,7 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-make: lexer.c main.c
+make: lexer.c hashtable.c main.c
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -272,8 +271,14 @@ make: lexer.c main.c
 	./$(OUT)
 	
 
+# Not a target:
+hashtable.c:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
 # files hash-table stats:
-# Load=7/1024=1%, Rehash=0, Collisions=0/20=0%
+# Load=8/1024=1%, Rehash=0, Collisions=0/22=0%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -285,6 +290,6 @@ make: lexer.c main.c
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Fri Jul 15 16:00:44 2022
+# Finished Make data base on Fri Jul 15 21:00:11 2022
 
  
