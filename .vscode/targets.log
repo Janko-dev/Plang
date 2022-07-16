@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Fri Jul 15 21:00:11 2022
+# Make data base, printed on Sat Jul 16 20:24:55 2022
 
 # Variables
 
@@ -18,6 +18,7 @@ make.exe: *** No rule to make target `all'.  Stop.
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
+ 
 # makefile
 MAKEFLAGS = Rrqp
 # automatic
@@ -32,17 +33,16 @@ HOMEDRIVE = C:
 ^D = $(patsubst %/,%,$(dir $^))
 # makefile
 CURDIR := /c/Users/janba/C-dev/Plang
- 
 # default
 SHELL := /bin/sh
 # makefile (from `Makefile', line 3)
-IN = lexer.c hashtable.c main.c
+IN = lexer.c hashtable.c parser.c main.c
 # environment
 WINDIR = C:\WINDOWS
 # environment
 VSCODE_NLS_CONFIG = {"locale":"nl","availableLanguages":{},"_languagePackSupport":true}
 # makefile (from `Makefile', line 2)
-CFLAGS = -Wall -Wextra -g
+CFLAGS = -Wall -Wextra -g -std=c99
 # environment
 ONEDRIVE = C:\Users\janba\OneDrive
 # environment
@@ -56,7 +56,7 @@ PROGRAMW6432 = C:\Program Files
 # environment
 PROGRAMDATA = C:\ProgramData
 # environment
-VSCODE_CWD = C:\Users\janba\C-dev\Plang
+VSCODE_CWD = C:\Users\janba\AppData\Local\Programs\Microsoft VS Code
 # environment
 PATH = /c/Program Files (x86)/Common Files/Intel/Shared Libraries/redist/intel64/compiler:/c/Program Files/Microsoft/jdk-11.0.12.7-hotspot/bin:/c/Program Files (x86)/Common Files/Oracle/Java/javapath:/c/WINDOWS/system32:/c/WINDOWS:/c/WINDOWS/System32/Wbem:/c/WINDOWS/System32/WindowsPowerShell/v1.0/:/c/WINDOWS/System32/OpenSSH/:/c/Program Files/NVIDIA Corporation/NVIDIA NvDLISR:/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/c/Program Files/Git/cmd:/c/Program Files/Docker/Docker/resources/bin:/c/ProgramData/DockerDesktop/version-bin:/c/Program Files/nodejs/:/c/Program Files/dotnet/:/mingw/bin:/usr/bin:/c/Program Files/Git LFS:/c/Users/janba/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Python 3.9:/c/Users/janba/AppData/Local/Microsoft/WindowsApps:/c/Users/janba/AppData/Local/Programs/Microsoft VS Code/bin:/usr/bin:/mingw/bin:/c/Users/janba/AppData/Roaming/npm:/c/Users/janba/.dotnet/tools:.
 # environment
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_8968_BVEHAAJVAOQKDYYG
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_16412_PUOBCYATXKSHMLUQ
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -183,6 +183,7 @@ OUT = out
 SUFFIXES := 
 # environment
 SYSTEMDRIVE = C:
+ 
 # environment
 SESSIONNAME = Console
 # environment
@@ -198,7 +199,7 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 8968
+VSCODE_PID = 16412
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
@@ -210,9 +211,9 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 
 # Directories
 
-# . (device -13143, inode 2693585): 13 files, no impossibilities.
+# . (device -13143, inode 2693585): 15 files, no impossibilities.
 
-# 13 files, no impossibilities in 1 directories.
+# 15 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -250,7 +251,7 @@ lexer.c:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-07-15 21:00:10
+#  Last modified 2022-07-16 20:23:54
 #  File has been updated.
 #  Successfully updated.
 # variable set hash-table stats:
@@ -262,7 +263,7 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-make: lexer.c hashtable.c main.c
+make: lexer.c hashtable.c parser.c main.c
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -277,8 +278,14 @@ hashtable.c:
 #  Modification time never checked.
 #  File has not been updated.
 
+# Not a target:
+parser.c:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
 # files hash-table stats:
-# Load=8/1024=1%, Rehash=0, Collisions=0/22=0%
+# Load=9/1024=1%, Rehash=0, Collisions=0/24=0%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -290,6 +297,6 @@ hashtable.c:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Fri Jul 15 21:00:11 2022
+# Finished Make data base on Sat Jul 16 20:24:55 2022
 
  

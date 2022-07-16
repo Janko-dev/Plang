@@ -69,11 +69,11 @@ void addToken(TokenList* list, enum TokenTypes type, void* literal){
         for (int i = start; i <= current; i++) lexeme[i-start] = source[i];
         lexeme[current-start] = '\0';
     } else {
-        lexeme = malloc(1);
-        if (lexeme == NULL){
-            plang_error(line, "Malloc failed in lexeme with type: %s", token_strings[type]);
-        }
-        *lexeme = '\0';
+        lexeme = NULL; //malloc(2);
+        // if (lexeme == NULL){
+        //     plang_error(line, "Malloc failed in lexeme with type: %s", token_strings[type]);
+        // }
+        // *lexeme = '\0';
     }
     list->tokens[list->index++] = (Token){.line=line, .type=type, .literal=literal, .lexeme=lexeme};
 }

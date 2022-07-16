@@ -1,4 +1,5 @@
 #include "lexer.h"
+#include "parser.h"
 
 int main(void){
 
@@ -21,6 +22,49 @@ int main(void){
         }
     }
 
+    Expr* expr = parse(tokenlist);
+    printf("\n");
+    AstPrinter(expr);
+
+    // double* x = malloc(sizeof(double));
+    // *x = 2.0f;
+
+    // double* y = malloc(sizeof(double));
+    // *y = 3.0f;
+    
+    // double* z = malloc(sizeof(double));
+    // *z = 8.0f;
+
+    // (2 + 3) * 8
+    // Expr expr = {
+    //     .type=BINARY,
+    //     .binexpr=&(BinaryExpr){
+    //         .left=&(Expr){
+    //             .type=BINARY, 
+    //             .binexpr=&(BinaryExpr){
+    //                 .left=&(Expr){
+    //                     .type=LITERAL, 
+    //                     .litexpr=&(LiteralExpr){
+    //                         .type=NUMBER, 
+    //                         .value=x}},
+    //                 .op=&(Token){.type=PLUS, .lexeme="+", .literal=NULL, .line=1},
+    //                 .right=&(Expr){
+    //                     .type=LITERAL, 
+    //                     .litexpr=&(LiteralExpr){
+    //                         .type=NUMBER, 
+    //                         .value=y}},
+    //                 }},
+    //         .op=&(Token){.type=STAR, .lexeme="*", .literal=NULL, .line=1},
+    //         .right=&(Expr){
+    //             .type=LITERAL, 
+    //             .litexpr=&(LiteralExpr){
+    //                 .type=NUMBER, 
+    //                 .value=z}},
+    //     }
+    // };
+
+    
+    freeAst(expr);
     freeTokenList(tokenlist);
     return 0;
 }

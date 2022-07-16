@@ -1,8 +1,1 @@
-fun /* comment */ factorial(n){
-    if (n == 1) return 1;
-    /* hehe
-    hoho
-    hihi
-    */
-    return n * fun(n-1);
-}
+2*2

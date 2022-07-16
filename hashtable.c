@@ -11,11 +11,11 @@ unsigned int hash(char* s){
     return hashval % HASH_SIZE;
 }
 
-// char* strdup(char* s){
-//     char* p = (char*)malloc(strlen(s) + 1);
-//     if (p != NULL) strcpy(p, s);
-//     return p;
-// }
+char* strdup(char* s){
+    char* p = (char*)malloc(strlen(s) + 1);
+    if (p != NULL) strcpy(p, s);
+    return p;
+}
 
 Hashlist* lookup(char* s){
     Hashlist* h;
