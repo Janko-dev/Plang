@@ -1,2 +1,3 @@
 # Plang
-Toy programming language in C
+A Toy programming language written in C
+
