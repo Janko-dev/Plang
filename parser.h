@@ -3,10 +3,12 @@
 
 #include "lexer.h"
 
-typedef struct binexpr_t BinaryExpr;
-typedef struct unexpr_t UnaryExpr;
-typedef struct litexpr_t LiteralExpr;
-typedef struct groupexpr_t GroupingExpr;
+// typedef struct binexpr_t BinaryExpr;
+// typedef struct unexpr_t UnaryExpr;
+// typedef struct litexpr_t LiteralExpr;
+// typedef struct groupexpr_t GroupingExpr;
+
+typedef struct Expr Expr;
 
 enum ExprType {
     BINARY,
@@ -16,37 +18,45 @@ enum ExprType {
 };
 
 typedef struct {
-    enum ExprType type;
-    union {
-        BinaryExpr* binexpr;
-        UnaryExpr* unexpr;
-        LiteralExpr* litexpr;
-        GroupingExpr* groupexpr;
-    };
-} Expr;
-
-struct binexpr_t{
     Expr* left;
     Token* op;
     Expr* right;
-};
+} BinaryExpr;
 
-struct unexpr_t{
+typedef struct {
     Token* op;
     Expr* right;
-};
+} UnaryExpr;
 
-struct litexpr_t{
+typedef struct {
     enum TokenTypes type;
     void* value;
-};
+} LiteralExpr;
 
-struct groupexpr_t{
+typedef struct {
     Expr* expression;
+} GroupingExpr;
+
+struct Expr {
+    enum ExprType type;
+    union {
+        BinaryExpr binary;
+        UnaryExpr unary;
+        LiteralExpr literal;
+        GroupingExpr group;
+    } as;
 };
 
 void AstPrinter(Expr* expr);
-void freeAst(Expr* expr);
+// void freeAst(Expr* expr);
 Expr* parse(TokenList* list);
+
+Expr* expression();
+Expr* equality();
+Expr* comparison();
+Expr* term();
+Expr* factor();
+Expr* unary();
+Expr* primary();
 
 #endif //_PARSER_H

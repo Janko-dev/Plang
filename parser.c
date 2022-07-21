@@ -2,16 +2,45 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+static Expr* newExpr(enum ExprType type){
+    Expr* e = malloc(sizeof(*e));
+    e->type = type;
+    return e;
+}
+
+static Expr* binaryExpr(Token* op, Expr* left, Expr* right){
+    Expr* e = newExpr(BINARY);
+    e->as.binary.left = left;
+    e->as.binary.right = right;
+    e->as.binary.op = op;
+    return e;
+}
+
+static Expr* unaryExpr(Token* op, Expr* right){
+    Expr* e = newExpr(UNARY);
+    e->as.unary.right = right;
+    e->as.unary.op = op;
+    return e;
+}
+
+static Expr* literalExpr(enum TokenTypes valueType, void* value){
+    Expr* e = newExpr(LITERAL);
+    e->as.literal.type = valueType;
+    e->as.literal.value = value;
+    return e;
+}
+
+static Expr* groupExpr(Expr* expression){
+    Expr* e = newExpr(GROUPING);
+    e->as.group.expression = expression;
+    return e;
+}
+
+// global variables
 static long current = 0;
 static TokenList* tokensList;
 
-Expr* equality();
-Expr* comparison();
-Expr* term();
-Expr* factor();
-Expr* unary();
-Expr* primary();
-
+// utils
 static Token* peek(){
     return &tokensList->tokens[current];
 }
@@ -40,98 +69,72 @@ static bool match(enum TokenTypes* types, int size){
     return false;
 }
 
+// parser
+Expr* parse(TokenList* list){
+    tokensList = list;
+    return expression();
+}
+
 Expr* expression(){
     return equality();
 }
 
 Expr* equality(){
 
-    Expr* result = malloc(sizeof(Expr));
-    Expr* left = malloc(sizeof(Expr));
-    left = comparison();
+    Expr* left = comparison();
     enum TokenTypes types[2] = {BANG_EQUAL, EQUAL_EQUAL};
     while(match(types, 2)){
         Token* op = previous();
-        Expr* right = malloc(sizeof(Expr));
-        right = comparison();
-        result->type = BINARY;
-        result->binexpr = malloc(sizeof(BinaryExpr));
-        result->binexpr->left = left;
-        result->binexpr->op = op;
-        result->binexpr->right = right;
+        Expr* right = comparison();
+        left = binaryExpr(op, left, right);
     }
-    return result->type == BINARY ? result : left;
+
+    return left;
 }
 
 Expr* comparison(){
 
-    Expr* result = malloc(sizeof(Expr));
-    Expr* left = malloc(sizeof(Expr));
-    left = term();
+    Expr* left = term();
     enum TokenTypes types[4] = {GREATER, GREATER_EQUAL, LESS, LESS_EQUAL};
     while(match(types, 4)){
         Token* op = previous();
-        Expr* right = malloc(sizeof(Expr));
-        right = term();
-        result->type = BINARY;
-        result->binexpr = malloc(sizeof(BinaryExpr));
-        result->binexpr->left = left;
-        result->binexpr->op = op;
-        result->binexpr->right = right;
+        Expr* right = term();
+        left = binaryExpr(op, left, right);
     }
-    return result->type == BINARY ? result : left;
+    return left;
 }
 
 Expr* term(){
 
-    Expr* result = malloc(sizeof(Expr));
-    Expr* left = malloc(sizeof(Expr));
-    left = factor();
+    Expr* left = factor();
     enum TokenTypes types[2] = {PLUS, MINUS};
     while(match(types, 2)){
         Token* op = previous();
-        Expr* right = malloc(sizeof(Expr));
-        right = factor();
-        result->type = BINARY;
-        result->binexpr = malloc(sizeof(BinaryExpr));
-        result->binexpr->left = left;
-        result->binexpr->op = op;
-        result->binexpr->right = right;
+        Expr* right = factor();
+        left = binaryExpr(op, left, right);
     }
-    return result->type == BINARY ? result : left;
+    return left;
 }
 
 Expr* factor(){
 
-    Expr* result = malloc(sizeof(Expr));
-    
-    Expr* left = malloc(sizeof(Expr));
-    left = unary();
+    Expr* left = unary();
     enum TokenTypes types[2] = {SLASH, STAR};
     while(match(types, 2)){
         Token* op = previous();
-        Expr* right = malloc(sizeof(Expr));
-        right = unary();
-        result->type = BINARY;
-        result->binexpr = malloc(sizeof(BinaryExpr));
-        result->binexpr->left = left;
-        result->binexpr->op = op;
-        result->binexpr->right = right;
+        Expr* right = unary();
+        left = binaryExpr(op, left, right);
     }
-    return result->type == BINARY ? result : left;
+    return left;
 }
 
 Expr* unary(){
-    Expr* result = malloc(sizeof(Expr));
+    Expr* result;
     enum TokenTypes types[2] = {BANG, MINUS};
     if (match(types, 2)){
         Token* op = previous();
-        Expr* right = malloc(sizeof(Expr));
-        right = unary();
-        result->type = UNARY;
-        result->unexpr = malloc(sizeof(UnaryExpr));
-        result->unexpr->op = op;
-        result->unexpr->right = right;
+        Expr* right = unary();
+        result = unaryExpr(op, right);
     } else {
         result = primary();
     }
@@ -139,19 +142,31 @@ Expr* unary(){
 }
 
 Expr* primary(){
-    Expr* result = malloc(sizeof(Expr));
-    enum TokenTypes num[1] = {NUMBER};
-    if (match(num, 1)){
-        result->type = LITERAL;
-        result->litexpr = malloc(sizeof(LiteralExpr));
-        result->litexpr->type = NUMBER;
-        result->litexpr->value = previous()->literal;
+    Expr* result;
+    if (check(NUMBER) || check(STRING)){
+        advance();
+        result = literalExpr(previous()->type, previous()->literal);
+    } else if (check(FALSE)){
+        advance();
+        result = literalExpr(FALSE, (void*)false);
+    } else if (check(TRUE)){
+        advance();
+        result = literalExpr(TRUE, (void*)true);
+    } else if (check(NIL)){
+        advance();
+        result = literalExpr(NIL, (void*)NULL);
+    } else if (check(LEFT_PAREN)){
+        advance();
+        Expr* e = expression();
+        if (!check(RIGHT_PAREN)){
+            fprintf(stderr, "Error, expected ')' but got %s\n", peek()->lexeme);
+            exit(1);
+        }
+        result = groupExpr(e);
+        advance();
     } else {
-        enum TokenTypes left[1] = {LEFT_PAREN};
-        enum TokenTypes right[1] = {RIGHT_PAREN};
-        match(left, 1);
-        result = expression();
-        match(right, 1);
+        fprintf(stderr, "Error, unhandled primary value, got %s\n", peek()->lexeme);
+        exit(1);
     }
     return result;
 }
@@ -160,29 +175,29 @@ void AstPrinter(Expr* expr){
     switch (expr->type)
     {
     case BINARY: {
-        printf("( %s ", expr->binexpr->op->lexeme);
-        AstPrinter(expr->binexpr->left);
-        AstPrinter(expr->binexpr->right);
+        printf("( %s ", expr->as.binary.op->lexeme);
+        AstPrinter(expr->as.binary.left);
+        AstPrinter(expr->as.binary.right);
         printf(" )");
     } break;
     case UNARY: {
-        printf("( %s ", expr->unexpr->op->lexeme);
-        AstPrinter(expr->unexpr->right);
+        printf("( %s ", expr->as.unary.op->lexeme);
+        AstPrinter(expr->as.unary.right);
         printf(" )");
     } break;
     case LITERAL: {
-        switch (expr->litexpr->type){
-            case NUMBER: printf(" %f ", *(double*)expr->litexpr->value); break;
-            case TRUE:
-            case FALSE:
-            case NIL:
-            case STRING: printf(" %s ", (char*)expr->litexpr->value); break;
+        switch (expr->as.literal.type){
+            case NUMBER: printf(" %f ", *(double*)expr->as.literal.value); break;
+            case TRUE: printf(" true "); break;
+            case FALSE: printf(" false "); break; 
+            case NIL: printf(" nil "); break;
+            case STRING: printf(" %s ", (char*)expr->as.literal.value); break;
             default: break;
         }
     } break;
     case GROUPING: {
         printf("( group ");
-        AstPrinter(expr->groupexpr->expression);
+        AstPrinter(expr->as.group.expression);
         printf(" )");
     } break;
     default:
@@ -190,36 +205,31 @@ void AstPrinter(Expr* expr){
     }
 }
 
-Expr* parse(TokenList* list){
-    tokensList = list;
-    return expression();
-}
-
-void freeAst(Expr* expr){
-    switch (expr->type)
-    {
-    case BINARY: {
-        freeAst(expr->binexpr->left);
-        free(expr->binexpr->left);
-        freeAst(expr->binexpr->right);
-        free(expr->binexpr->right);
-        free(expr->binexpr);
-    } break;
-    case UNARY: {
-        freeAst(expr->unexpr->right);
-        free(expr->unexpr->right);
-        free(expr->unexpr);
-    } break;
-    case LITERAL: {
-        free(expr->litexpr);
-    } break;
-    case GROUPING: {
-        freeAst(expr->groupexpr->expression);
-        free(expr->groupexpr->expression);
-        free(expr->groupexpr);
-    } break;
-    default:
-        break;
-    }
-    free(expr);
-}
+// void freeAst(Expr* expr){
+//     switch (expr->type)
+//     {
+//     case BINARY: {
+//         freeAst(expr->binexpr->left);
+//         free(expr->binexpr->left);
+//         freeAst(expr->binexpr->right);
+//         free(expr->binexpr->right);
+//         free(expr->binexpr);
+//     } break;
+//     case UNARY: {
+//         freeAst(expr->unexpr->right);
+//         free(expr->unexpr->right);
+//         free(expr->unexpr);
+//     } break;
+//     case LITERAL: {
+//         free(expr->litexpr);
+//     } break;
+//     case GROUPING: {
+//         freeAst(expr->groupexpr->expression);
+//         free(expr->groupexpr->expression);
+//         free(expr->groupexpr);
+//     } break;
+//     default:
+//         break;
+//     }
+//     free(expr);
+// }

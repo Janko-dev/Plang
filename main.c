@@ -64,7 +64,7 @@ int main(void){
     // };
 
     
-    freeAst(expr);
+    // freeAst(expr);
     freeTokenList(tokenlist);
     return 0;
 }
