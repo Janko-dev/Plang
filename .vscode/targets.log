@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Thu Jul 21 18:00:34 2022
+# Make data base, printed on Sun Jul 24 19:56:14 2022
 
 # Variables
 
@@ -20,7 +20,6 @@ make.exe: *** No rule to make target `all'.  Stop.
 ?F = $(notdir $?)
 # makefile
 MAKEFLAGS = Rrqp
- 
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
 # automatic
@@ -30,6 +29,7 @@ HOMEDRIVE = C:
 # automatic
 @F = $(notdir $@)
 # automatic
+ 
 ^D = $(patsubst %/,%,$(dir $^))
 # makefile
 CURDIR := /c/Users/janba/C-dev/Plang
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_20168_TXPDLIYPZDVULHSZ
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_20160_VQOCEXKVEARRIHRX
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -96,9 +96,9 @@ PUBLIC = C:\Users\Public
 # environment
 VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
-VSCODE_CODE_CACHE_PATH = C:\Users\janba\AppData\Roaming\Code\CachedData\b06ae3b2d2dbfe28bca3134cc6be65935cdfea6a
+VSCODE_CODE_CACHE_PATH = C:\Users\janba\AppData\Roaming\Code\CachedData\3b889b090b5ad5793f524b5d1d39fda662b96a2a
 # environment
-APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
 # environment
 COMMONPROGRAMFILES = C:\Program Files (x86)\Common Files
 # environment
@@ -144,7 +144,7 @@ PROCESSOR_IDENTIFIER = AMD64 Family 23 Model 113 Stepping 0, AuthenticAMD
 # environment
 OS = Windows_NT
 # environment
-VSCODE_IPC_HOOK = \\.\pipe\37406f71a663a7ded3962ec94234e7b6-1.69.1-main-sock
+VSCODE_IPC_HOOK = \\.\pipe\37406f71a663a7ded3962ec94234e7b6-1.69.2-main-sock
 # environment
 HOMEPATH = \
 # environment
@@ -165,6 +165,8 @@ SYSTEMROOT = C:\WINDOWS
 +F = $(notdir $+)
 # environment
 APPDATA = C:\Users\janba\AppData\Roaming
+# environment
+__COMPAT_LAYER = DetectorsAppHealth
 # environment
 TEMP = /tmp
 # environment
@@ -198,11 +200,11 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 20168
+VSCODE_PID = 20160
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
-# Load=93/1024=9%, Rehash=0, Collisions=9/119=8%
+# Load=94/1024=9%, Rehash=0, Collisions=9/120=7%
 
 # Pattern-specific Variable Values
 
@@ -210,10 +212,9 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 
 # Directories
 
-# . (device -13143, inode 2693585): 15 files, no impossibilities.
+# . (device -13143, inode 2693585): 18 files, no impossibilities.
 
-# 15 files, no impossibilities in 1 directories.
- 
+# 18 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -297,6 +298,6 @@ parser.c:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Thu Jul 21 18:00:34 2022
+# Finished Make data base on Sun Jul 24 19:56:14 2022
 
  

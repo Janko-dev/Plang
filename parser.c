@@ -1,6 +1,16 @@
 #include "parser.h"
 #include <stdio.h>
 #include <stdbool.h>
+#define UTILS_IMPLEMENT
+#include "utils.h"
+
+static Expr* expression();
+static Expr* equality();
+static Expr* comparison();
+static Expr* term();
+static Expr* factor();
+static Expr* unary();
+static Expr* primary();
 
 static Expr* newExpr(enum ExprType type){
     Expr* e = malloc(sizeof(*e));
@@ -75,11 +85,11 @@ Expr* parse(TokenList* list){
     return expression();
 }
 
-Expr* expression(){
+static Expr* expression(){
     return equality();
 }
 
-Expr* equality(){
+static Expr* equality(){
 
     Expr* left = comparison();
     enum TokenTypes types[2] = {BANG_EQUAL, EQUAL_EQUAL};
@@ -92,7 +102,7 @@ Expr* equality(){
     return left;
 }
 
-Expr* comparison(){
+static Expr* comparison(){
 
     Expr* left = term();
     enum TokenTypes types[4] = {GREATER, GREATER_EQUAL, LESS, LESS_EQUAL};
@@ -104,7 +114,7 @@ Expr* comparison(){
     return left;
 }
 
-Expr* term(){
+static Expr* term(){
 
     Expr* left = factor();
     enum TokenTypes types[2] = {PLUS, MINUS};
@@ -116,7 +126,7 @@ Expr* term(){
     return left;
 }
 
-Expr* factor(){
+static Expr* factor(){
 
     Expr* left = unary();
     enum TokenTypes types[2] = {SLASH, STAR};
@@ -128,7 +138,7 @@ Expr* factor(){
     return left;
 }
 
-Expr* unary(){
+static Expr* unary(){
     Expr* result;
     enum TokenTypes types[2] = {BANG, MINUS};
     if (match(types, 2)){
@@ -141,7 +151,7 @@ Expr* unary(){
     return result;
 }
 
-Expr* primary(){
+static Expr* primary(){
     Expr* result;
     if (check(NUMBER) || check(STRING)){
         advance();
@@ -159,18 +169,20 @@ Expr* primary(){
         advance();
         Expr* e = expression();
         if (!check(RIGHT_PAREN)){
-            fprintf(stderr, "Error, expected ')' but got %s\n", peek()->lexeme);
+            plerror(peek()->line, PARSE_ERROR, "expected ')' but got %s\n", peek()->lexeme);
             exit(1);
         }
         result = groupExpr(e);
         advance();
     } else {
-        fprintf(stderr, "Error, unhandled primary value, got %s\n", peek()->lexeme);
+        plerror(peek()->line, PARSE_ERROR, "unhandled value, got \"%s\"\n", peek()->lexeme);
         exit(1);
     }
     return result;
 }
 
+
+// AST methods
 void AstPrinter(Expr* expr){
     switch (expr->type)
     {
@@ -205,31 +217,30 @@ void AstPrinter(Expr* expr){
     }
 }
 
-// void freeAst(Expr* expr){
-//     switch (expr->type)
-//     {
-//     case BINARY: {
-//         freeAst(expr->binexpr->left);
-//         free(expr->binexpr->left);
-//         freeAst(expr->binexpr->right);
-//         free(expr->binexpr->right);
-//         free(expr->binexpr);
-//     } break;
-//     case UNARY: {
-//         freeAst(expr->unexpr->right);
-//         free(expr->unexpr->right);
-//         free(expr->unexpr);
-//     } break;
-//     case LITERAL: {
-//         free(expr->litexpr);
-//     } break;
-//     case GROUPING: {
-//         freeAst(expr->groupexpr->expression);
-//         free(expr->groupexpr->expression);
-//         free(expr->groupexpr);
-//     } break;
-//     default:
-//         break;
-//     }
-//     free(expr);
-// }
+void freeAst(Expr* expr){
+    switch (expr->type)
+    {
+    case BINARY: {
+        freeAst(expr->as.binary.left);
+        free(expr->as.binary.left);
+        freeAst(expr->as.binary.right);
+        free(expr->as.binary.right);
+        free(expr);
+    } break;
+    case UNARY: {
+        freeAst(expr->as.unary.right);
+        free(expr->as.unary.right);
+        free(expr);
+    } break;
+    case LITERAL: {
+        free(expr);
+    } break;
+    case GROUPING: {
+        freeAst(expr->as.group.expression);
+        free(expr->as.group.expression);
+        free(expr);
+    } break;
+    default:
+        break;
+    }
+}

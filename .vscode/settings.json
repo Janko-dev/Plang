@@ -15,6 +15,7 @@
         "type_traits": "c",
         "utility": "c",
         "string_view": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "parser.h": "c"
     }
 }

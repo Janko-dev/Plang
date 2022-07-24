@@ -3,19 +3,14 @@
 
 #include "lexer.h"
 
-// typedef struct binexpr_t BinaryExpr;
-// typedef struct unexpr_t UnaryExpr;
-// typedef struct litexpr_t LiteralExpr;
-// typedef struct groupexpr_t GroupingExpr;
-
-typedef struct Expr Expr;
-
 enum ExprType {
     BINARY,
     UNARY,
     LITERAL,
     GROUPING
 };
+
+typedef struct Expr Expr;
 
 typedef struct {
     Expr* left;
@@ -48,15 +43,7 @@ struct Expr {
 };
 
 void AstPrinter(Expr* expr);
-// void freeAst(Expr* expr);
+void freeAst(Expr* expr);
 Expr* parse(TokenList* list);
-
-Expr* expression();
-Expr* equality();
-Expr* comparison();
-Expr* term();
-Expr* factor();
-Expr* unary();
-Expr* primary();
 
 #endif //_PARSER_H

@@ -2,13 +2,10 @@
 #define _LEXER_H
 
 #include <stdlib.h>
-#include <stdbool.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
-#include <stdarg.h>
-
-#include "hashtable.h"
 
 enum TokenTypes {
     // single-character tokens
@@ -45,8 +42,7 @@ typedef struct {
 } TokenList;
 
 TokenList* tokenize(const char* file_path);
+void printTokenlist(TokenList* list);
 void freeTokenList(TokenList* list);
-
-extern const char* token_strings[];
 
 #endif //_LEXER_H
