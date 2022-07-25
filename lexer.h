@@ -13,6 +13,7 @@ enum TokenTypes {
     LEFT_BRACE, RIGHT_BRACE,
     COMMA, DOT, MINUS, PLUS,
     SEMICOLON, SLASH, STAR,
+    QMARK, COLON,
     
     // one or two character tokens
     BANG, BANG_EQUAL, EQUAL, EQUAL_EQUAL,
@@ -41,8 +42,19 @@ typedef struct {
     size_t size;
 } TokenList;
 
-TokenList* tokenize(const char* file_path);
+char* read_source_file(const char* file_path);
+TokenList* tokenize(char* source_bytes);
+
 void printTokenlist(TokenList* list);
 void freeTokenList(TokenList* list);
+
+typedef struct nlist Hashlist;
+struct nlist{
+    struct nlist* next;
+    char* key;
+    int val;
+};
+
+#define HASH_SIZE 100
 
 #endif //_LEXER_H

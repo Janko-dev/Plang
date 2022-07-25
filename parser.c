@@ -26,6 +26,14 @@ static Expr* binaryExpr(Token* op, Expr* left, Expr* right){
     return e;
 }
 
+static Expr* ternaryExpr(Expr* cond, Expr* true_branch, Expr* false_branch){
+    Expr* e = newExpr(TERNARY);
+    e->as.ternary.cond = cond;
+    e->as.ternary.trueBranch = true_branch;
+    e->as.ternary.falseBranch = false_branch;
+    return e;
+}
+
 static Expr* unaryExpr(Token* op, Expr* right){
     Expr* e = newExpr(UNARY);
     e->as.unary.right = right;
@@ -33,7 +41,7 @@ static Expr* unaryExpr(Token* op, Expr* right){
     return e;
 }
 
-static Expr* literalExpr(enum TokenTypes valueType, void* value){
+static Expr* literalExpr(enum LiteralType valueType, void* value){
     Expr* e = newExpr(LITERAL);
     e->as.literal.type = valueType;
     e->as.literal.value = value;
@@ -47,7 +55,7 @@ static Expr* groupExpr(Expr* expression){
 }
 
 // global variables
-static long current = 0;
+static long current;
 static TokenList* tokensList;
 
 // utils
@@ -82,11 +90,24 @@ static bool match(enum TokenTypes* types, int size){
 // parser
 Expr* parse(TokenList* list){
     tokensList = list;
+    current = 0;
     return expression();
 }
 
 static Expr* expression(){
-    return equality();
+    Expr* cond = equality();
+    while(check(QMARK)){
+        advance();
+        Expr* tbranch = expression();
+        if (!check(COLON)){
+            plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'\n", peek()->lexeme);
+            exit(1);
+        }
+        advance();
+        Expr* fbranch = expression();
+        cond = ternaryExpr(cond, tbranch, fbranch);
+    }
+    return cond;
 }
 
 static Expr* equality(){
@@ -155,16 +176,16 @@ static Expr* primary(){
     Expr* result;
     if (check(NUMBER) || check(STRING)){
         advance();
-        result = literalExpr(previous()->type, previous()->literal);
+        result = literalExpr(previous()->type == NUMBER ? NUM_T : STR_T, previous()->literal);
     } else if (check(FALSE)){
         advance();
-        result = literalExpr(FALSE, (void*)false);
+        result = literalExpr(BOOL_T, (void*)false);
     } else if (check(TRUE)){
         advance();
-        result = literalExpr(TRUE, (void*)true);
+        result = literalExpr(BOOL_T, (void*)true);
     } else if (check(NIL)){
         advance();
-        result = literalExpr(NIL, (void*)NULL);
+        result = literalExpr(NIL_T, (void*)NULL);
     } else if (check(LEFT_PAREN)){
         advance();
         Expr* e = expression();
@@ -181,8 +202,114 @@ static Expr* primary(){
     return result;
 }
 
-
 // AST methods
+LiteralExpr evaluate(Expr* expr){
+    switch (expr->type)
+    {
+    case BINARY: {
+        LiteralExpr left = evaluate(expr->as.binary.left);
+        LiteralExpr right = evaluate(expr->as.binary.right);
+
+        switch (expr->as.binary.op->type)
+        {
+        case EQUAL_EQUAL: {
+            if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
+            if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
+            bool res = *(double*)left.value == *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+        }
+        case BANG_EQUAL: {
+            if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
+            if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
+            bool res = *(double*)left.value != *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res};
+        }
+        case GREATER: {
+            bool res = *(double*)left.value > *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+        }
+        case GREATER_EQUAL: {
+            bool res = *(double*)left.value >= *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+        }
+        case LESS: {
+            bool res = *(double*)left.value < *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+        }
+        case LESS_EQUAL: {
+            bool res = *(double*)left.value <= *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+        }
+        case STAR: {
+            double res = *(double*)left.value * *(double*)right.value;
+            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
+        }
+        case SLASH: {
+            double res = *(double*)left.value / *(double*)right.value;
+            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
+        }
+        case MINUS: {
+            double res = *(double*)left.value - *(double*)right.value;
+            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
+        }
+        case PLUS: {
+            if (left.type == NUM_T && right.type == NUM_T){
+                double res = *(double*)left.value + *(double*)right.value;
+                return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
+            }
+            if (left.type == STR_T && right.type == STR_T){
+                size_t len_left = strlen((char*)left.value);
+                size_t len_right = strlen((char*)right.value);
+                char* res = malloc(len_left + len_right); // double '\0' so -1
+                for (size_t i = 0; i < len_left; i++) res[i] = ((char*)left.value)[i];
+                for (size_t i = len_left; i < len_left + len_right; i++) res[i] = ((char*)right.value)[i-len_left];
+                res[len_left+len_right] = '\0';
+                return (LiteralExpr){.type=STR_T, .value=(void*)res};
+            }
+            plerror(-1, RUNTIME_ERROR, "Unreachable\n");
+            exit(1);
+        }
+        default:
+            plerror(-1, RUNTIME_ERROR, "Unreachable\n");
+            exit(1);;
+        }
+    } break;
+    case TERNARY: {
+        LiteralExpr res = evaluate(expr->as.ternary.cond);
+        if (res.type != BOOL_T){
+            plerror(-1, RUNTIME_ERROR, "Expected condition of type BOOL_T\n");
+        }
+        if (res.value) {
+            return evaluate(expr->as.ternary.trueBranch);
+        } else {
+            return evaluate(expr->as.ternary.falseBranch);
+        }
+    } break;
+    case UNARY: {
+        LiteralExpr right = evaluate(expr->as.unary.right);
+        switch(expr->as.unary.op->type){
+            case MINUS: {
+                *(double*)right.value *= -1;
+                return right;
+            };
+            case BANG: {
+                if (right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
+                if (right.type == BOOL_T) return (LiteralExpr){.type=BOOL_T, .value=(void*)(!*(bool*)right.value)};
+                return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
+            }
+            default: 
+                plerror(-1, RUNTIME_ERROR, "Unreachable\n");
+                exit(1);
+        }
+    } break;
+    case LITERAL: return expr->as.literal; break;
+    case GROUPING: return evaluate(expr->as.group.expression); break;
+    default:
+        plerror(-1, RUNTIME_ERROR, "Unreachable\n");
+        exit(1);
+    }
+}
+
 void AstPrinter(Expr* expr){
     switch (expr->type)
     {
@@ -192,6 +319,15 @@ void AstPrinter(Expr* expr){
         AstPrinter(expr->as.binary.right);
         printf(" )");
     } break;
+    case TERNARY: {
+        printf("( ternary ");
+        AstPrinter(expr->as.ternary.cond);
+        printf(" ? ");
+        AstPrinter(expr->as.ternary.trueBranch);
+        printf(" : ");
+        AstPrinter(expr->as.ternary.falseBranch);
+        printf(" )");
+    } break;
     case UNARY: {
         printf("( %s ", expr->as.unary.op->lexeme);
         AstPrinter(expr->as.unary.right);
@@ -199,11 +335,10 @@ void AstPrinter(Expr* expr){
     } break;
     case LITERAL: {
         switch (expr->as.literal.type){
-            case NUMBER: printf(" %f ", *(double*)expr->as.literal.value); break;
-            case TRUE: printf(" true "); break;
-            case FALSE: printf(" false "); break; 
-            case NIL: printf(" nil "); break;
-            case STRING: printf(" %s ", (char*)expr->as.literal.value); break;
+            case NUM_T: printf(" %f ", *(double*)expr->as.literal.value); break;
+            case BOOL_T: printf(*(bool*)expr->as.literal.value ? " true " : " false "); break;
+            case NIL_T: printf(" nil "); break;
+            case STR_T: printf(" %s ", (char*)expr->as.literal.value); break;
             default: break;
         }
     } break;
@@ -225,6 +360,15 @@ void freeAst(Expr* expr){
         free(expr->as.binary.left);
         freeAst(expr->as.binary.right);
         free(expr->as.binary.right);
+        free(expr);
+    } break;
+    case TERNARY: {
+        freeAst(expr->as.ternary.cond);
+        free(expr->as.ternary.cond);
+        freeAst(expr->as.ternary.trueBranch);
+        free(expr->as.ternary.trueBranch);
+        freeAst(expr->as.ternary.falseBranch);
+        free(expr->as.ternary.falseBranch);
         free(expr);
     } break;
     case UNARY: {

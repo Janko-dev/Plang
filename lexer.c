@@ -1,7 +1,48 @@
 #include "lexer.h"
-#include "hashtable.h"
 #define UTILS_IMPLEMENT
 #include "utils.h"
+
+// hashmap
+Hashlist* hashtab[HASH_SIZE];
+
+unsigned int hash(char* s){
+    unsigned int hashval;
+    for (hashval = 0; *s != '\0'; s++){
+        hashval = *s + 31 * hashval;
+    }
+
+    return hashval % HASH_SIZE;
+}
+
+char* strdup(char* s){
+    char* p = (char*)malloc(strlen(s) + 1);
+    if (p != NULL) strcpy(p, s);
+    return p;
+}
+
+Hashlist* lookup(char* s){
+    Hashlist* h;
+    for (h = hashtab[hash(s)]; h != NULL; h = h->next){
+        if (strcmp(s, h->key) == 0){
+            return h;
+        }
+    }
+    return NULL;
+}
+
+Hashlist* put(char* key, int val){
+    Hashlist* h;
+    unsigned int hashval;
+    if ((h = lookup(key)) == NULL){
+        h = (Hashlist*)malloc(sizeof(*h));
+        if (h == NULL || (h->key = strdup(key)) == NULL) return NULL;
+        hashval = hash(key);
+        h->next = hashtab[hashval];
+        hashtab[hashval] = h;
+    }
+    h->val = val;
+    return h;
+}
 
 // global variables (makes life easier and more readable)
 long line = 1;
@@ -12,7 +53,7 @@ char* source;
 long source_len;
 
 const char* token_strings[] = {   
-    "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE", "COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR",
+    "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE", "COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR", "QMARK", "COLON",
     "BANG", "BANG_EQUAL", "EQUAL", "EQUAL_EQUAL", "GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL", "IDENTIFIER", "STRING", "NUMBER",
     "AND", "OR", "PRINT", "IF", "ELSE", "TRUE", "FALSE", "NIL", "FOR", "WHILE", "FUN", "RETURN", "CLASS", "SUPER", "THIS", "VAR", "ENDFILE"
 };
@@ -176,12 +217,16 @@ char* read_source_file(const char* file_path){
     return source;
 }
 
-TokenList* tokenize(const char* file_path){
-    source = read_source_file(file_path);
-    source_len = strlen(source);
+TokenList* tokenize(char* source_bytes){
+    line = 1;
+    current = 0;
+    start = 0;
+    source = source_bytes;
+    source_len = strlen(source_bytes);
     TokenList* tokenlist = (TokenList*)malloc(sizeof(TokenList));
     initTokenList(tokenlist);
 
+    memset(hashtab, 0, sizeof(hashtab));
     put("and",    AND);
     put("or",     OR);
     put("print",  PRINT);
@@ -213,6 +258,8 @@ TokenList* tokenize(const char* file_path){
             case '-': addToken(tokenlist, MINUS, NULL); break;
             case '+': addToken(tokenlist, PLUS, NULL); break;
             case ';': addToken(tokenlist, SEMICOLON, NULL); break;
+            case '?': addToken(tokenlist, QMARK, NULL); break;
+            case ':': addToken(tokenlist, COLON, NULL); break;
             case '*': addToken(tokenlist, STAR, NULL); break;
             case '!': addToken(tokenlist, match('=') ? BANG_EQUAL : BANG, NULL); break;
             case '=': addToken(tokenlist, match('=') ? EQUAL_EQUAL : EQUAL, NULL); break;

@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Sun Jul 24 19:56:14 2022
+# Make data base, printed on Mon Jul 25 13:29:04 2022
 
 # Variables
 
@@ -21,6 +21,7 @@ make.exe: *** No rule to make target `all'.  Stop.
 # makefile
 MAKEFLAGS = Rrqp
 # automatic
+ 
 ?D = $(patsubst %/,%,$(dir $?))
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
@@ -29,14 +30,13 @@ HOMEDRIVE = C:
 # automatic
 @F = $(notdir $@)
 # automatic
- 
 ^D = $(patsubst %/,%,$(dir $^))
 # makefile
 CURDIR := /c/Users/janba/C-dev/Plang
 # default
 SHELL := /bin/sh
 # makefile (from `Makefile', line 3)
-IN = lexer.c hashtable.c parser.c main.c
+IN = lexer.c parser.c main.c
 # environment
 WINDIR = C:\WINDOWS
 # environment
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_20160_VQOCEXKVEARRIHRX
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_2584_KNDBSLTOSNVBRUWC
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -98,7 +98,7 @@ VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
 VSCODE_CODE_CACHE_PATH = C:\Users\janba\AppData\Roaming\Code\CachedData\3b889b090b5ad5793f524b5d1d39fda662b96a2a
 # environment
-APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
 # environment
 COMMONPROGRAMFILES = C:\Program Files (x86)\Common Files
 # environment
@@ -166,8 +166,6 @@ SYSTEMROOT = C:\WINDOWS
 # environment
 APPDATA = C:\Users\janba\AppData\Roaming
 # environment
-__COMPAT_LAYER = DetectorsAppHealth
-# environment
 TEMP = /tmp
 # environment
 COMSPEC = C:\WINDOWS\system32\cmd.exe
@@ -178,7 +176,7 @@ MAKEFILES :=
 # environment
 LC_ALL = C
 # makefile (from `Makefile', line 4)
-OUT = out
+OUT = plang
 # automatic
 ^F = $(notdir $^)
 # default
@@ -200,11 +198,11 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 20160
+VSCODE_PID = 2584
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
-# Load=94/1024=9%, Rehash=0, Collisions=9/120=7%
+# Load=93/1024=9%, Rehash=0, Collisions=9/119=8%
 
 # Pattern-specific Variable Values
 
@@ -212,9 +210,9 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 
 # Directories
 
-# . (device -13143, inode 2693585): 18 files, no impossibilities.
+# . (device -13143, inode 2693585): 17 files, no impossibilities.
 
-# 18 files, no impossibilities in 1 directories.
+# 17 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -229,6 +227,7 @@ all:
 #  File does not exist.
 #  File has not been updated.
 # variable set hash-table stats:
+ 
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
 # Not a target:
@@ -252,7 +251,7 @@ lexer.c:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-07-16 20:23:54
+#  Last modified 2022-07-25 13:29:02
 #  File has been updated.
 #  Successfully updated.
 # variable set hash-table stats:
@@ -264,20 +263,13 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-make: lexer.c hashtable.c parser.c main.c
+make: lexer.c parser.c main.c
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
 #  commands to execute (from `Makefile', line 7):
 	$(CC) $(IN) -o $(OUT) $(CFLAGS)
-	./$(OUT)
 	
-
-# Not a target:
-hashtable.c:
-#  Implicit rule search has not been done.
-#  Modification time never checked.
-#  File has not been updated.
 
 # Not a target:
 parser.c:
@@ -286,7 +278,7 @@ parser.c:
 #  File has not been updated.
 
 # files hash-table stats:
-# Load=9/1024=1%, Rehash=0, Collisions=0/24=0%
+# Load=8/1024=1%, Rehash=0, Collisions=0/22=0%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -298,6 +290,6 @@ parser.c:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Sun Jul 24 19:56:14 2022
+# Finished Make data base on Mon Jul 25 13:29:04 2022
 
  

@@ -5,9 +5,17 @@
 
 enum ExprType {
     BINARY,
+    TERNARY,
     UNARY,
     LITERAL,
     GROUPING
+};
+
+enum LiteralType {
+    NIL_T,
+    NUM_T,
+    STR_T,
+    BOOL_T
 };
 
 typedef struct Expr Expr;
@@ -19,12 +27,18 @@ typedef struct {
 } BinaryExpr;
 
 typedef struct {
+    Expr* cond;
+    Expr* trueBranch;
+    Expr* falseBranch;
+} TernaryExpr;
+
+typedef struct {
     Token* op;
     Expr* right;
 } UnaryExpr;
 
 typedef struct {
-    enum TokenTypes type;
+    enum LiteralType type;
     void* value;
 } LiteralExpr;
 
@@ -36,6 +50,7 @@ struct Expr {
     enum ExprType type;
     union {
         BinaryExpr binary;
+        TernaryExpr ternary;
         UnaryExpr unary;
         LiteralExpr literal;
         GroupingExpr group;
@@ -43,6 +58,7 @@ struct Expr {
 };
 
 void AstPrinter(Expr* expr);
+LiteralExpr evaluate(Expr* expr);
 void freeAst(Expr* expr);
 Expr* parse(TokenList* list);
 

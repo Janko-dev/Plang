@@ -9,6 +9,7 @@
 enum ErrorType {
     LEX_ERROR,
     PARSE_ERROR,
+    RUNTIME_ERROR
 };
 
 static void plerror(int line, enum ErrorType type, const char* message, ...);
