@@ -16,6 +16,8 @@
         "utility": "c",
         "string_view": "c",
         "stdio.h": "c",
-        "parser.h": "c"
+        "parser.h": "c",
+        "lexer.h": "c",
+        "stdlib.h": "c"
     }
 }

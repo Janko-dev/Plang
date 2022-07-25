@@ -2,6 +2,7 @@
 #define _PARSER_H
 
 #include "lexer.h"
+#include <stdarg.h>
 
 enum ExprType {
     BINARY,

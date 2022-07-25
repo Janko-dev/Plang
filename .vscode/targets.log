@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Mon Jul 25 13:29:04 2022
+# Make data base, printed on Mon Jul 25 23:01:15 2022
 
 # Variables
 
@@ -21,10 +21,10 @@ make.exe: *** No rule to make target `all'.  Stop.
 # makefile
 MAKEFLAGS = Rrqp
 # automatic
- 
 ?D = $(patsubst %/,%,$(dir $?))
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
+ 
 # environment
 HOMEDRIVE = C:
 # automatic
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_2584_KNDBSLTOSNVBRUWC
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13016_EEKTWCJGUUNFQFUD
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -98,7 +98,7 @@ VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
 # environment
 VSCODE_CODE_CACHE_PATH = C:\Users\janba\AppData\Roaming\Code\CachedData\3b889b090b5ad5793f524b5d1d39fda662b96a2a
 # environment
-APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = true
 # environment
 COMMONPROGRAMFILES = C:\Program Files (x86)\Common Files
 # environment
@@ -198,7 +198,7 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 2584
+VSCODE_PID = 13016
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
@@ -227,7 +227,6 @@ all:
 #  File does not exist.
 #  File has not been updated.
 # variable set hash-table stats:
- 
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
 # Not a target:
@@ -259,6 +258,7 @@ Makefile:
 
 # Not a target:
 .DEFAULT:
+ 
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -290,6 +290,6 @@ parser.c:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Mon Jul 25 13:29:04 2022
+# Finished Make data base on Mon Jul 25 23:01:15 2022
 
  

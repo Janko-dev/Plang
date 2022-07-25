@@ -100,8 +100,7 @@ static Expr* expression(){
         advance();
         Expr* tbranch = expression();
         if (!check(COLON)){
-            plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'\n", peek()->lexeme);
-            exit(1);
+            plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'", peek()->lexeme);
         }
         advance();
         Expr* fbranch = expression();
@@ -190,19 +189,20 @@ static Expr* primary(){
         advance();
         Expr* e = expression();
         if (!check(RIGHT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected ')' but got %s\n", peek()->lexeme);
-            exit(1);
+            plerror(peek()->line, PARSE_ERROR, "expected ')' but got %s", peek()->lexeme);
         }
         result = groupExpr(e);
         advance();
     } else {
-        plerror(peek()->line, PARSE_ERROR, "unhandled value, got \"%s\"\n", peek()->lexeme);
-        exit(1);
+        plerror(peek()->line, PARSE_ERROR, "unhandled value, got \"%s\"", peek()->lexeme);
     }
     return result;
 }
 
 // AST methods
+
+static char* valueTypes[] = { "nil", "number", "string", "boolean" };
+
 LiteralExpr evaluate(Expr* expr){
     switch (expr->type)
     {
@@ -225,30 +225,65 @@ LiteralExpr evaluate(Expr* expr){
             return (LiteralExpr){.type=BOOL_T, .value=(void*)res};
         }
         case GREATER: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             bool res = *(double*)left.value > *(double*)right.value;
             return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
         }
         case GREATER_EQUAL: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             bool res = *(double*)left.value >= *(double*)right.value;
             return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
         }
         case LESS: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             bool res = *(double*)left.value < *(double*)right.value;
             return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
         }
         case LESS_EQUAL: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             bool res = *(double*)left.value <= *(double*)right.value;
             return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
         }
         case STAR: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             double res = *(double*)left.value * *(double*)right.value;
             return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
         }
         case SLASH: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             double res = *(double*)left.value / *(double*)right.value;
             return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
         }
         case MINUS: {
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return (LiteralExpr){};
+            }
             double res = *(double*)left.value - *(double*)right.value;
             return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
         }
@@ -266,18 +301,20 @@ LiteralExpr evaluate(Expr* expr){
                 res[len_left+len_right] = '\0';
                 return (LiteralExpr){.type=STR_T, .value=(void*)res};
             }
-            plerror(-1, RUNTIME_ERROR, "Unreachable\n");
-            exit(1);
+            plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
+                valueTypes[left.type], valueTypes[right.type]);
+            return (LiteralExpr){};
         }
         default:
-            plerror(-1, RUNTIME_ERROR, "Unreachable\n");
-            exit(1);;
+            plerror(-1, RUNTIME_ERROR, "Unreachable binary operator");
+            return (LiteralExpr){};
         }
     } break;
     case TERNARY: {
         LiteralExpr res = evaluate(expr->as.ternary.cond);
         if (res.type != BOOL_T){
-            plerror(-1, RUNTIME_ERROR, "Expected condition of type BOOL_T\n");
+            plerror(-1, RUNTIME_ERROR, "Expected type '%s', but got type '%s'", valueTypes[BOOL_T], valueTypes[res.type]);
+            return (LiteralExpr){};
         }
         if (res.value) {
             return evaluate(expr->as.ternary.trueBranch);
@@ -289,6 +326,10 @@ LiteralExpr evaluate(Expr* expr){
         LiteralExpr right = evaluate(expr->as.unary.right);
         switch(expr->as.unary.op->type){
             case MINUS: {
+                if (right.type != NUM_T) {
+                    plerror(-1, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
+                    return (LiteralExpr){};
+                }
                 *(double*)right.value *= -1;
                 return right;
             };
@@ -298,15 +339,15 @@ LiteralExpr evaluate(Expr* expr){
                 return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
             }
             default: 
-                plerror(-1, RUNTIME_ERROR, "Unreachable\n");
-                exit(1);
+                plerror(-1, RUNTIME_ERROR, "Unreachable state");
+                return (LiteralExpr){};
         }
     } break;
     case LITERAL: return expr->as.literal; break;
     case GROUPING: return evaluate(expr->as.group.expression); break;
     default:
-        plerror(-1, RUNTIME_ERROR, "Unreachable\n");
-        exit(1);
+        plerror(-1, RUNTIME_ERROR, "Unreachable state");
+        return (LiteralExpr){};
     }
 }
 

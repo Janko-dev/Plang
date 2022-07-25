@@ -1,5 +1,8 @@
 #include "lexer.h"
 #include "parser.h"
+#include "utils.h"
+
+bool hadError = false;
 
 void run(char* source){
     TokenList* tokenlist = tokenize(source);
@@ -7,19 +10,22 @@ void run(char* source){
 
     Expr* expr = parse(tokenlist);
     
-    printf("\n");
-    AstPrinter(expr);
-    printf("\n");
+    if (!hadError){
+        printf("\n");
+        AstPrinter(expr);
+        printf("\n");
+    }
 
     LiteralExpr val = evaluate(expr);
-    switch (val.type)
-    {
-    case NUM_T: printf("VAL NUM: %f\n", *(double*)val.value); break;
-    case NIL_T: printf("VAL NIL: %d\n", val.value); break;
-    case BOOL_T: printf("VAL BOOL: %d\n", val.value); break;
-    case STR_T: printf("VAL STR: %s\n", (char*)val.value); break;
-    default:
-        break;
+    if (!hadError){
+        switch (val.type)
+        {
+            case NUM_T:  printf("VAL NUM: %f\n", *(double*)val.value); break;
+            case NIL_T:  printf("VAL NIL: %d\n", val.value); break;
+            case BOOL_T: printf("VAL BOOL: %d\n", val.value); break;
+            case STR_T:  printf("VAL STR: %s\n", (char*)val.value); break;
+            default: break;
+        }
     }
     
     freeAst(expr);
@@ -29,6 +35,7 @@ void run(char* source){
 void runFile(const char* path){
     char* source = read_source_file(path);
     run(source);
+    if (hadError) exit(1);
 }
 
 void runREPL(){
@@ -51,6 +58,7 @@ void runREPL(){
         line[index] = '\0';
         
         run(line);
+        hadError = false;
     }
 }
 

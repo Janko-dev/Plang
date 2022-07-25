@@ -115,7 +115,6 @@ void addString(TokenList* list){
 
     if (current >= source_len) {
         plerror(line, LEX_ERROR, "Unterminated string literal.");
-        exit(1);
     }
 
     advance();
@@ -123,7 +122,6 @@ void addString(TokenList* list){
     
     if (literal == NULL) {
         plerror(line, LEX_ERROR, "Malloc failed in string tokenization.");
-        exit(1);
     }
     int i;
     for (i = start+1; i < current-1; i++) literal[i-(start+1)] = source[i];
@@ -294,7 +292,7 @@ TokenList* tokenize(char* source_bytes){
                 } else if (isalpha(c)) {
                     addIdentifier(tokenlist);
                 } else {
-                    plerror(line, LEX_ERROR, "Unexpected character %c.", c);
+                    plerror(line, LEX_ERROR, "Unexpected character '%c'", c);
                 }
             } break;
         }
