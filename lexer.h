@@ -42,12 +42,8 @@ typedef struct {
     size_t size;
 } TokenList;
 
-char* read_source_file(const char* file_path);
-TokenList* tokenize(char* source_bytes);
 
-void printTokenlist(TokenList* list);
-void freeTokenList(TokenList* list);
-
+#define HASH_SIZE 100
 typedef struct nlist Hashlist;
 struct nlist{
     struct nlist* next;
@@ -55,6 +51,10 @@ struct nlist{
     int val;
 };
 
-#define HASH_SIZE 100
+char* read_source_file(const char* file_path);
+TokenList* tokenize(char* source_bytes);
+
+void printTokenlist(TokenList* list);
+void freeTokenList(TokenList* list);
 
 #endif //_LEXER_H

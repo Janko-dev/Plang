@@ -4,6 +4,10 @@
 #define UTILS_IMPLEMENT
 #include "utils.h"
 
+static Stmt* declaration();
+static Stmt* varDecl();
+static Stmt* statement();
+
 static Expr* expression();
 static Expr* equality();
 static Expr* comparison();
@@ -12,6 +16,38 @@ static Expr* factor();
 static Expr* unary();
 static Expr* primary();
 
+// global variables
+static long current;
+static TokenList* tokensList;
+
+#pragma region List_utils
+
+void initStmtList(StmtList* list){
+    list->statements = malloc(sizeof(Stmt) * INITIAL_STMTLIST_SIZE);
+    if (list->statements == NULL){
+        plerror(-1, PARSE_ERROR, "Malloc failed at init statement list");
+    }
+    list->index = 0;
+    list->size = INITIAL_STMTLIST_SIZE;
+}
+
+void addStatement(StmtList* list, Stmt stmt){
+    if (list->index == list->size){
+        list->size *= 2;
+        list->statements = realloc(list->statements, sizeof(Stmt) * list->size);
+    }
+    list->statements[list->index++] = stmt;
+}
+
+void freeStmtList(StmtList* list){
+
+}
+
+#pragma endregion List_utils
+
+#pragma region Constructors
+
+// expression constructors
 static Expr* newExpr(enum ExprType type){
     Expr* e = malloc(sizeof(*e));
     e->type = type;
@@ -54,10 +90,48 @@ static Expr* groupExpr(Expr* expression){
     return e;
 }
 
-// global variables
-static long current;
-static TokenList* tokensList;
+static Expr* varExpr(Token* name){
+    Expr* e = newExpr(VAREXPR);
+    e->as.var.name = name;
+    return e;
+}
 
+static Expr* assignExpr(Token* name, Expr* value){
+    Expr* e = newExpr(ASSIGN);
+    e->as.assign.name = name;
+    e->as.assign.value = value;
+    return e;
+}
+
+// statement constructors
+static Stmt* newStmt(enum StmtType type){
+    Stmt* stmt = malloc(sizeof(Stmt));
+    stmt->type = type;
+    return stmt;
+}
+
+static Stmt* exprStmt(Expr* expr){
+    Stmt* stmt = newStmt(EXPR_STMT);
+    stmt->as.expr.expression = expr;
+    return stmt;
+}
+
+static Stmt* printStmt(Expr* expr){
+    Stmt* stmt = newStmt(PRINT_STMT);
+    stmt->as.print.expression = expr;
+    return stmt;
+}
+
+static Stmt* declStmt(Token* name, Expr* initializer){
+    Stmt* stmt = newStmt(VAR_DECL_STMT);
+    stmt->as.var.name = name;
+    stmt->as.var.initializer = initializer;
+    return stmt;
+}
+
+#pragma endregion Constructors
+
+#pragma region Parse_utils
 // utils
 static Token* peek(){
     return &tokensList->tokens[current];
@@ -86,27 +160,90 @@ static bool match(enum TokenTypes* types, int size){
     }
     return false;
 }
+#pragma endregion parse_utils
 
+#pragma region Grammar
 // parser
-Expr* parse(TokenList* list){
+StmtList* parse(TokenList* list){
     tokensList = list;
     current = 0;
-    return expression();
+    StmtList* statements = (StmtList*)malloc(sizeof(StmtList));
+    initStmtList(statements);
+    while(peek()->type != ENDFILE){
+        addStatement(statements, *declaration());
+    }
+    return statements;
+}
+
+static Stmt* declaration(){
+    if (check(VAR)){
+        advance();
+        return varDecl();
+    }
+    return statement();
+}
+
+static Stmt* varDecl(){
+    if (!check(IDENTIFIER)){
+        plerror(peek()->line, PARSE_ERROR, "expected an identifier after 'var' keyword, but got %s", peek()->lexeme);
+    }
+    advance();
+    Token* id = previous();
+    Expr* initializer = NULL;
+    if (check(EQUAL)){
+        advance();
+        initializer = expression();
+    }
+    if (!check(SEMICOLON)){
+        plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of variable declaration, but got %s", peek()->lexeme);
+    }
+    advance();
+    return declStmt(id, initializer);
+}
+
+static Stmt* statement(){
+    if (check(PRINT)){
+        advance();
+        Expr* expr = expression();
+        if (!check(SEMICOLON)){
+            plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of print statement, but got %s", peek()->lexeme);
+        }
+        advance();
+        return printStmt(expr);
+    } else {
+        Expr* expr = expression();
+        if (!check(SEMICOLON)){
+            plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of expression statement, but got %s", peek()->lexeme);
+        }
+        advance();
+        return exprStmt(expr);
+    }
 }
 
 static Expr* expression(){
-    Expr* cond = equality();
-    while(check(QMARK)){
+    Expr* expr = equality();
+    if (check(EQUAL)){
+        Token* equal = previous();
         advance();
-        Expr* tbranch = expression();
-        if (!check(COLON)){
-            plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'", peek()->lexeme);
+        Expr* value = expression();
+        if (expr->type == VAREXPR){
+            Token* name = expr->as.var.name;
+            return assignExpr(name, value);
         }
-        advance();
-        Expr* fbranch = expression();
-        cond = ternaryExpr(cond, tbranch, fbranch);
-    }
-    return cond;
+        plerror(equal->line, PARSE_ERROR, "Invalid assignment target");
+    } else {
+        while(check(QMARK)){
+            advance();
+            Expr* tbranch = expression();
+            if (!check(COLON)){
+                plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'", peek()->lexeme);
+            }
+            advance();
+            Expr* fbranch = expression();
+            expr = ternaryExpr(expr, tbranch, fbranch);
+        }
+    } 
+    return expr;
 }
 
 static Expr* equality(){
@@ -118,7 +255,6 @@ static Expr* equality(){
         Expr* right = comparison();
         left = binaryExpr(op, left, right);
     }
-
     return left;
 }
 
@@ -176,6 +312,9 @@ static Expr* primary(){
     if (check(NUMBER) || check(STRING)){
         advance();
         result = literalExpr(previous()->type == NUMBER ? NUM_T : STR_T, previous()->literal);
+    } else if (check(IDENTIFIER)){
+        advance();
+        result = varExpr(previous());
     } else if (check(FALSE)){
         advance();
         result = literalExpr(BOOL_T, (void*)false);
@@ -198,10 +337,18 @@ static Expr* primary(){
     }
     return result;
 }
+#pragma endregion Grammar
 
+#pragma region AST
 // AST methods
 
 static char* valueTypes[] = { "nil", "number", "string", "boolean" };
+
+int isTruthy(LiteralExpr obj){
+    if (obj.value == NULL) return false;
+    if (obj.type == BOOL_T) return *(int*)obj.value;
+    return true;
+}
 
 LiteralExpr evaluate(Expr* expr){
     switch (expr->type)
@@ -215,54 +362,54 @@ LiteralExpr evaluate(Expr* expr){
         case EQUAL_EQUAL: {
             if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
             if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
-            bool res = *(double*)left.value == *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+            int res = *(double*)left.value == *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
         }
         case BANG_EQUAL: {
             if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
             if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
-            bool res = *(double*)left.value != *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res};
+            int res = *(double*)left.value != *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
         }
         case GREATER: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
-            bool res = *(double*)left.value > *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+            int res = *(double*)left.value > *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
         }
         case GREATER_EQUAL: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
-            bool res = *(double*)left.value >= *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+            int res = *(double*)left.value >= *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
         }
         case LESS: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
-            bool res = *(double*)left.value < *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+            int res = *(double*)left.value < *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
         }
         case LESS_EQUAL: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
-            bool res = *(double*)left.value <= *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)res}; 
+            int res = *(double*)left.value <= *(double*)right.value;
+            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
         }
         case STAR: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
@@ -271,7 +418,7 @@ LiteralExpr evaluate(Expr* expr){
         }
         case SLASH: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
@@ -280,7 +427,7 @@ LiteralExpr evaluate(Expr* expr){
         }
         case MINUS: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return (LiteralExpr){};
             }
@@ -301,12 +448,12 @@ LiteralExpr evaluate(Expr* expr){
                 res[len_left+len_right] = '\0';
                 return (LiteralExpr){.type=STR_T, .value=(void*)res};
             }
-            plerror(-1, RUNTIME_ERROR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
+            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
                 valueTypes[left.type], valueTypes[right.type]);
             return (LiteralExpr){};
         }
         default:
-            plerror(-1, RUNTIME_ERROR, "Unreachable binary operator");
+            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Unreachable binary operator");
             return (LiteralExpr){};
         }
     } break;
@@ -316,7 +463,7 @@ LiteralExpr evaluate(Expr* expr){
             plerror(-1, RUNTIME_ERROR, "Expected type '%s', but got type '%s'", valueTypes[BOOL_T], valueTypes[res.type]);
             return (LiteralExpr){};
         }
-        if (res.value) {
+        if (*(int*)res.value) {
             return evaluate(expr->as.ternary.trueBranch);
         } else {
             return evaluate(expr->as.ternary.falseBranch);
@@ -327,19 +474,18 @@ LiteralExpr evaluate(Expr* expr){
         switch(expr->as.unary.op->type){
             case MINUS: {
                 if (right.type != NUM_T) {
-                    plerror(-1, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
+                    plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
                     return (LiteralExpr){};
                 }
                 *(double*)right.value *= -1;
                 return right;
             };
             case BANG: {
-                if (right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
-                if (right.type == BOOL_T) return (LiteralExpr){.type=BOOL_T, .value=(void*)(!*(bool*)right.value)};
-                return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
+                int res = !isTruthy(right);
+                return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
             }
             default: 
-                plerror(-1, RUNTIME_ERROR, "Unreachable state");
+                plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
                 return (LiteralExpr){};
         }
     } break;
@@ -351,33 +497,34 @@ LiteralExpr evaluate(Expr* expr){
     }
 }
 
-void AstPrinter(Expr* expr){
+void expressionPrinter(Expr* expr){
+    
     switch (expr->type)
     {
     case BINARY: {
         printf("( %s ", expr->as.binary.op->lexeme);
-        AstPrinter(expr->as.binary.left);
-        AstPrinter(expr->as.binary.right);
+        expressionPrinter(expr->as.binary.left);
+        expressionPrinter(expr->as.binary.right);
         printf(" )");
     } break;
     case TERNARY: {
         printf("( ternary ");
-        AstPrinter(expr->as.ternary.cond);
+        expressionPrinter(expr->as.ternary.cond);
         printf(" ? ");
-        AstPrinter(expr->as.ternary.trueBranch);
+        expressionPrinter(expr->as.ternary.trueBranch);
         printf(" : ");
-        AstPrinter(expr->as.ternary.falseBranch);
+        expressionPrinter(expr->as.ternary.falseBranch);
         printf(" )");
     } break;
     case UNARY: {
         printf("( %s ", expr->as.unary.op->lexeme);
-        AstPrinter(expr->as.unary.right);
+        expressionPrinter(expr->as.unary.right);
         printf(" )");
     } break;
     case LITERAL: {
         switch (expr->as.literal.type){
             case NUM_T: printf(" %f ", *(double*)expr->as.literal.value); break;
-            case BOOL_T: printf(*(bool*)expr->as.literal.value ? " true " : " false "); break;
+            case BOOL_T: printf(expr->as.literal.value ? " true " : " false "); break;
             case NIL_T: printf(" nil "); break;
             case STR_T: printf(" %s ", (char*)expr->as.literal.value); break;
             default: break;
@@ -385,11 +532,39 @@ void AstPrinter(Expr* expr){
     } break;
     case GROUPING: {
         printf("( group ");
-        AstPrinter(expr->as.group.expression);
+        expressionPrinter(expr->as.group.expression);
         printf(" )");
     } break;
-    default:
-        break;
+    case VAREXPR: printf("( id %s )", expr->as.var.name->lexeme); break;
+    case ASSIGN: {
+        printf("( assign %s ", expr->as.assign.name->lexeme);
+        expressionPrinter(expr->as.assign.value);
+        printf(" )");
+    } break;
+    default: break;
+    }
+}
+
+void statementPrinter(Stmt* stmt){
+    switch(stmt->type)
+    {
+    case EXPR_STMT: {
+        printf("( expr ");
+        expressionPrinter(stmt->as.expr.expression);
+        printf(" )");
+    } break;
+    case PRINT_STMT: {
+        printf("( print ");
+        expressionPrinter(stmt->as.expr.expression);
+        printf(" )");
+    } break;
+    case VAR_DECL_STMT: {
+        printf("( var decl %s ", stmt->as.var.name->lexeme);
+        if (stmt->as.var.initializer != NULL)
+            expressionPrinter(stmt->as.var.initializer);
+        printf(" )");
+    } break;
+    default: break;
     }
 }
 
@@ -429,3 +604,5 @@ void freeAst(Expr* expr){
         break;
     }
 }
+
+#pragma endregion AST

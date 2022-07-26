@@ -2,6 +2,21 @@
 #define UTILS_IMPLEMENT
 #include "utils.h"
 
+// global variables (makes life easier and more readable)
+long line = 1;
+long current = 0; 
+long start = 0;
+
+char* source;
+long source_len;
+
+const char* token_strings[] = {   
+    "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE", "COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR", "QMARK", "COLON",
+    "BANG", "BANG_EQUAL", "EQUAL", "EQUAL_EQUAL", "GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL", "IDENTIFIER", "STRING", "NUMBER",
+    "AND", "OR", "PRINT", "IF", "ELSE", "TRUE", "FALSE", "NIL", "FOR", "WHILE", "FUN", "RETURN", "CLASS", "SUPER", "THIS", "VAR", "ENDFILE"
+};
+
+#pragma region Keyword_hashmap
 // hashmap
 Hashlist* hashtab[HASH_SIZE];
 
@@ -43,21 +58,9 @@ Hashlist* put(char* key, int val){
     h->val = val;
     return h;
 }
+#pragma endregion Keyword_hashmap
 
-// global variables (makes life easier and more readable)
-long line = 1;
-long current = 0; 
-long start = 0;
-
-char* source;
-long source_len;
-
-const char* token_strings[] = {   
-    "LEFT_PAREN", "RIGHT_PAREN", "LEFT_BRACE", "RIGHT_BRACE", "COMMA", "DOT", "MINUS", "PLUS", "SEMICOLON", "SLASH", "STAR", "QMARK", "COLON",
-    "BANG", "BANG_EQUAL", "EQUAL", "EQUAL_EQUAL", "GREATER", "GREATER_EQUAL", "LESS", "LESS_EQUAL", "IDENTIFIER", "STRING", "NUMBER",
-    "AND", "OR", "PRINT", "IF", "ELSE", "TRUE", "FALSE", "NIL", "FOR", "WHILE", "FUN", "RETURN", "CLASS", "SUPER", "THIS", "VAR", "ENDFILE"
-};
-
+#pragma region Lexer_utils
 char advance(){
     return source[current++];
 }
@@ -78,7 +81,9 @@ char peekNext(){
     if (current + 1 >= source_len) return '\0';
     return source[current + 1];
 }
+#pragma endregion Lexer_utils
 
+#pragma region Tokenlist
 void initTokenList(TokenList* list){
     list->tokens = (Token*)malloc(sizeof(Token) * INITIAL_TOKENLIST_SIZE);
     if (list->tokens == NULL){
@@ -194,6 +199,8 @@ void printTokenlist(TokenList* list){
             printf("%s\n", (char*)list->tokens[i].literal);
     }
 }
+
+#pragma endregion Tokenlist
 
 char* read_source_file(const char* file_path){
     FILE* source_file = fopen(file_path, "r");

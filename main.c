@@ -8,27 +8,29 @@ void run(char* source){
     TokenList* tokenlist = tokenize(source);
     printTokenlist(tokenlist);
 
-    Expr* expr = parse(tokenlist);
+    StmtList* stmtList = parse(tokenlist);
     
     if (!hadError){
         printf("\n");
-        AstPrinter(expr);
-        printf("\n");
-    }
-
-    LiteralExpr val = evaluate(expr);
-    if (!hadError){
-        switch (val.type)
-        {
-            case NUM_T:  printf("VAL NUM: %f\n", *(double*)val.value); break;
-            case NIL_T:  printf("VAL NIL: %d\n", val.value); break;
-            case BOOL_T: printf("VAL BOOL: %d\n", val.value); break;
-            case STR_T:  printf("VAL STR: %s\n", (char*)val.value); break;
-            default: break;
+        for (size_t i = 0; i < stmtList->index; i++){
+            statementPrinter(&stmtList->statements[i]);
+            printf("\n");
         }
     }
+
+    // LiteralExpr val = evaluate(statements);
+    // if (!hadError){
+    //     switch (val.type)
+    //     {
+    //         case NUM_T:  printf("VAL NUM: %f\n", *(double*)val.value); break;
+    //         case NIL_T:  printf("VAL NIL: %d\n", val.value); break;
+    //         case BOOL_T: printf("VAL BOOL: %d\n", *(int*)val.value); break;
+    //         case STR_T:  printf("VAL STR: %s\n", (char*)val.value); break;
+    //         default: break;
+    //     }
+    // }
     
-    freeAst(expr);
+    // freeAst(expr);
     freeTokenList(tokenlist);
 }
 

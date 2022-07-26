@@ -1,1 +1,5 @@
-25*4 != 100 ? "hello" : 2-1==10 ? "wow" : 29
+var x = 10;
+print x;
+x = "hello";
+var epic = x ? true : false;
+print epic;

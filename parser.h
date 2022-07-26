@@ -4,12 +4,21 @@
 #include "lexer.h"
 #include <stdarg.h>
 
+// Enum types
 enum ExprType {
     BINARY,
     TERNARY,
     UNARY,
     LITERAL,
-    GROUPING
+    GROUPING,
+    VAREXPR,
+    ASSIGN,
+};
+
+enum StmtType {
+    EXPR_STMT,
+    PRINT_STMT,
+    VAR_DECL_STMT,
 };
 
 enum LiteralType {
@@ -19,6 +28,7 @@ enum LiteralType {
     BOOL_T
 };
 
+// Expressions
 typedef struct Expr Expr;
 
 typedef struct {
@@ -47,6 +57,15 @@ typedef struct {
     Expr* expression;
 } GroupingExpr;
 
+typedef struct {
+    Token* name;
+} VarExpr;
+
+typedef struct {
+    Token* name;
+    Expr* value;
+} AssignExpr;
+
 struct Expr {
     enum ExprType type;
     union {
@@ -55,12 +74,46 @@ struct Expr {
         UnaryExpr unary;
         LiteralExpr literal;
         GroupingExpr group;
+        VarExpr var;
+        AssignExpr assign;
     } as;
 };
 
-void AstPrinter(Expr* expr);
+// statements
+typedef struct Stmt Stmt;
+
+typedef struct {
+    Expr* expression;
+} ExprStmt;
+
+typedef struct {
+    Expr* expression;
+} PrintStmt;
+
+typedef struct {
+    Token* name;
+    Expr* initializer;
+} VarDeclStmt;
+
+struct Stmt {
+    enum StmtType type;
+    union {
+        ExprStmt expr;
+        PrintStmt print;
+        VarDeclStmt var;
+    } as;
+};
+
+#define INITIAL_STMTLIST_SIZE 20
+typedef struct {
+    Stmt* statements;
+    size_t index;
+    size_t size;
+} StmtList;
+
+void statementPrinter(Stmt* stmt);
 LiteralExpr evaluate(Expr* expr);
 void freeAst(Expr* expr);
-Expr* parse(TokenList* list);
+StmtList* parse(TokenList* list);
 
 #endif //_PARSER_H
