@@ -112,8 +112,7 @@ typedef struct {
 } StmtList;
 
 void statementPrinter(Stmt* stmt);
-LiteralExpr evaluate(Expr* expr);
-void freeAst(Expr* expr);
+void freeStmtList(StmtList* list);
 StmtList* parse(TokenList* list);
 
 #endif //_PARSER_H

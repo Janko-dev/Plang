@@ -1,5 +1,5 @@
 make.exe --dry-run --keep-going --print-directory
 make.exe: Entering directory `/c/Users/janba/C-dev/Plang'
-gcc lexer.c parser.c main.c -o plang -Wall -Wextra -Wno-unknown-pragmas -g -std=c99
+gcc lexer.c parser.c interpreter.c main.c -o plang -Wall -Wextra -Wno-unknown-pragmas -g -std=c99
 make.exe: Leaving directory `/c/Users/janba/C-dev/Plang'
  

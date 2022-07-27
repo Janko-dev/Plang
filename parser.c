@@ -39,8 +39,67 @@ void addStatement(StmtList* list, Stmt stmt){
     list->statements[list->index++] = stmt;
 }
 
-void freeStmtList(StmtList* list){
+void freeExpr(Expr* expr){
+    if (expr == NULL) return;
+    switch (expr->type)
+    {
+    case BINARY: {
+        freeExpr(expr->as.binary.left);
+        free(expr->as.binary.left);
+        freeExpr(expr->as.binary.right);
+        free(expr->as.binary.right);
+        free(expr);
+    } break;
+    case TERNARY: {
+        freeExpr(expr->as.ternary.cond);
+        free(expr->as.ternary.cond);
+        freeExpr(expr->as.ternary.trueBranch);
+        free(expr->as.ternary.trueBranch);
+        freeExpr(expr->as.ternary.falseBranch);
+        free(expr->as.ternary.falseBranch);
+        free(expr);
+    } break;
+    case UNARY: {
+        freeExpr(expr->as.unary.right);
+        free(expr->as.unary.right);
+        free(expr);
+    } break;
+    case LITERAL: free(expr->as.literal.value); free(expr); break;
+    case GROUPING: {
+        freeExpr(expr->as.group.expression);
+        free(expr->as.group.expression);
+        free(expr);
+    } break;
+    case VAREXPR: {
+        free(expr->as.var.name->lexeme);
+        free(expr->as.var.name->literal);
+        free(expr);
+    } break;
+    case ASSIGN: {
+        free(expr->as.assign.name->lexeme);
+        free(expr->as.assign.name->literal);
+        freeExpr(expr->as.assign.value);
+        free(expr);
+    } break;
+    default: break;
+    }
+}
 
+void freeStmtList(StmtList* list){
+    for (size_t i = 0; i < list->index; i++){
+        switch(list->statements[i].type)
+        {
+        case EXPR_STMT: freeExpr(list->statements[i].as.expr.expression); break;
+        case PRINT_STMT: freeExpr(list->statements[i].as.print.expression); break;
+        case VAR_DECL_STMT: {
+            freeExpr(list->statements[i].as.var.initializer);
+            free(list->statements[i].as.var.name->lexeme);
+            free(list->statements[i].as.var.name->literal);
+        } break;
+        default: break;
+        }
+    }
+    free(list);
 }
 
 #pragma endregion List_utils
@@ -164,6 +223,12 @@ static bool match(enum TokenTypes* types, int size){
 
 #pragma region Grammar
 // parser
+
+// void synchronize(){
+//     advance();
+
+// }
+
 StmtList* parse(TokenList* list){
     tokensList = list;
     current = 0;
@@ -342,161 +407,6 @@ static Expr* primary(){
 #pragma region AST
 // AST methods
 
-static char* valueTypes[] = { "nil", "number", "string", "boolean" };
-
-int isTruthy(LiteralExpr obj){
-    if (obj.value == NULL) return false;
-    if (obj.type == BOOL_T) return *(int*)obj.value;
-    return true;
-}
-
-LiteralExpr evaluate(Expr* expr){
-    switch (expr->type)
-    {
-    case BINARY: {
-        LiteralExpr left = evaluate(expr->as.binary.left);
-        LiteralExpr right = evaluate(expr->as.binary.right);
-
-        switch (expr->as.binary.op->type)
-        {
-        case EQUAL_EQUAL: {
-            if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
-            if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
-            int res = *(double*)left.value == *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
-        }
-        case BANG_EQUAL: {
-            if (left.value == NULL && right.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)false};
-            if (left.value == NULL) return (LiteralExpr){.type=BOOL_T, .value=(void*)true};
-            int res = *(double*)left.value != *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
-        }
-        case GREATER: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            int res = *(double*)left.value > *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
-        }
-        case GREATER_EQUAL: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            int res = *(double*)left.value >= *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
-        }
-        case LESS: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            int res = *(double*)left.value < *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res}; 
-        }
-        case LESS_EQUAL: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            int res = *(double*)left.value <= *(double*)right.value;
-            return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
-        }
-        case STAR: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            double res = *(double*)left.value * *(double*)right.value;
-            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
-        }
-        case SLASH: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            double res = *(double*)left.value / *(double*)right.value;
-            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
-        }
-        case MINUS: {
-            if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
-                    valueTypes[left.type], valueTypes[right.type]);
-                return (LiteralExpr){};
-            }
-            double res = *(double*)left.value - *(double*)right.value;
-            return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
-        }
-        case PLUS: {
-            if (left.type == NUM_T && right.type == NUM_T){
-                double res = *(double*)left.value + *(double*)right.value;
-                return (LiteralExpr){.type=NUM_T, .value=(void*)&res}; 
-            }
-            if (left.type == STR_T && right.type == STR_T){
-                size_t len_left = strlen((char*)left.value);
-                size_t len_right = strlen((char*)right.value);
-                char* res = malloc(len_left + len_right); // double '\0' so -1
-                for (size_t i = 0; i < len_left; i++) res[i] = ((char*)left.value)[i];
-                for (size_t i = len_left; i < len_left + len_right; i++) res[i] = ((char*)right.value)[i-len_left];
-                res[len_left+len_right] = '\0';
-                return (LiteralExpr){.type=STR_T, .value=(void*)res};
-            }
-            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
-                valueTypes[left.type], valueTypes[right.type]);
-            return (LiteralExpr){};
-        }
-        default:
-            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Unreachable binary operator");
-            return (LiteralExpr){};
-        }
-    } break;
-    case TERNARY: {
-        LiteralExpr res = evaluate(expr->as.ternary.cond);
-        if (res.type != BOOL_T){
-            plerror(-1, RUNTIME_ERROR, "Expected type '%s', but got type '%s'", valueTypes[BOOL_T], valueTypes[res.type]);
-            return (LiteralExpr){};
-        }
-        if (*(int*)res.value) {
-            return evaluate(expr->as.ternary.trueBranch);
-        } else {
-            return evaluate(expr->as.ternary.falseBranch);
-        }
-    } break;
-    case UNARY: {
-        LiteralExpr right = evaluate(expr->as.unary.right);
-        switch(expr->as.unary.op->type){
-            case MINUS: {
-                if (right.type != NUM_T) {
-                    plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
-                    return (LiteralExpr){};
-                }
-                *(double*)right.value *= -1;
-                return right;
-            };
-            case BANG: {
-                int res = !isTruthy(right);
-                return (LiteralExpr){.type=BOOL_T, .value=(void*)&res};
-            }
-            default: 
-                plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
-                return (LiteralExpr){};
-        }
-    } break;
-    case LITERAL: return expr->as.literal; break;
-    case GROUPING: return evaluate(expr->as.group.expression); break;
-    default:
-        plerror(-1, RUNTIME_ERROR, "Unreachable state");
-        return (LiteralExpr){};
-    }
-}
-
 void expressionPrinter(Expr* expr){
     
     switch (expr->type)
@@ -565,43 +475,6 @@ void statementPrinter(Stmt* stmt){
         printf(" )");
     } break;
     default: break;
-    }
-}
-
-void freeAst(Expr* expr){
-    switch (expr->type)
-    {
-    case BINARY: {
-        freeAst(expr->as.binary.left);
-        free(expr->as.binary.left);
-        freeAst(expr->as.binary.right);
-        free(expr->as.binary.right);
-        free(expr);
-    } break;
-    case TERNARY: {
-        freeAst(expr->as.ternary.cond);
-        free(expr->as.ternary.cond);
-        freeAst(expr->as.ternary.trueBranch);
-        free(expr->as.ternary.trueBranch);
-        freeAst(expr->as.ternary.falseBranch);
-        free(expr->as.ternary.falseBranch);
-        free(expr);
-    } break;
-    case UNARY: {
-        freeAst(expr->as.unary.right);
-        free(expr->as.unary.right);
-        free(expr);
-    } break;
-    case LITERAL: {
-        free(expr);
-    } break;
-    case GROUPING: {
-        freeAst(expr->as.group.expression);
-        free(expr->as.group.expression);
-        free(expr);
-    } break;
-    default:
-        break;
     }
 }
 

@@ -1,22 +1,30 @@
 #include "lexer.h"
 #include "parser.h"
+#include "interpreter.h"
 #include "utils.h"
 
 bool hadError = false;
 
-void run(char* source){
+void run(char* source, Env* env[ENV_SIZE]){
     TokenList* tokenlist = tokenize(source);
-    printTokenlist(tokenlist);
+    //printTokenlist(tokenlist);
 
     StmtList* stmtList = parse(tokenlist);
     
     if (!hadError){
-        printf("\n");
-        for (size_t i = 0; i < stmtList->index; i++){
-            statementPrinter(&stmtList->statements[i]);
-            printf("\n");
-        }
+        // printf("\n");
+        // for (size_t i = 0; i < stmtList->index; i++){
+        //     // statementPrinter(&stmtList->statements[i]);
+        //     // printf("\n");
+        // }
+        interpret(stmtList, env);
     }
+    // double val = 10.0;
+    // char* val = "hello world";
+    // define(env, "x", val);
+
+    // void* x = get(env, &(Token){.lexeme="x"});
+    // printf("TEST RES: %s\n", (char*)x);
 
     // LiteralExpr val = evaluate(statements);
     // if (!hadError){
@@ -30,13 +38,16 @@ void run(char* source){
     //     }
     // }
     
-    // freeAst(expr);
+    freeStmtList(stmtList);
     freeTokenList(tokenlist);
 }
 
 void runFile(const char* path){
     char* source = read_source_file(path);
-    run(source);
+    Env* env[ENV_SIZE];
+    memset(env, 0, sizeof(env));
+    run(source, env);
+    freeEnv(env);
     if (hadError) exit(1);
 }
 
@@ -44,6 +55,8 @@ void runREPL(){
     char c;
     size_t size, index;
     char* line = malloc(100);
+    Env* env[ENV_SIZE];
+    memset(env, 0, sizeof(env));
     printf("Welcome to the REPL (Read, Evaluate, Print, Loop) environment\n");
     while (true){
         size = 100;
@@ -59,9 +72,10 @@ void runREPL(){
         }
         line[index] = '\0';
         
-        run(line);
+        run(line, env);
         hadError = false;
     }
+    freeEnv(env);
 }
 
 int main(int argc, char** argv){

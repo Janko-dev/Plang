@@ -1,5 +1,2 @@
-var x = 10;
-print x;
-x = "hello";
-var epic = x ? true : false;
-print epic;
+var x = nil;
+print x ? true : false;

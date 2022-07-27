@@ -42,7 +42,6 @@ typedef struct {
     size_t size;
 } TokenList;
 
-
 #define HASH_SIZE 100
 typedef struct nlist Hashlist;
 struct nlist{

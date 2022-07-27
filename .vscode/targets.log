@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Tue Jul 26 19:51:43 2022
+# Make data base, printed on Wed Jul 27 09:51:14 2022
 
 # Variables
 
@@ -22,6 +22,7 @@ make.exe: *** No rule to make target `all'.  Stop.
 MAKEFLAGS = Rrqp
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
+ 
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
 # environment
@@ -35,8 +36,7 @@ CURDIR := /c/Users/janba/C-dev/Plang
 # default
 SHELL := /bin/sh
 # makefile (from `Makefile', line 3)
- 
-IN = lexer.c parser.c main.c
+IN = lexer.c parser.c interpreter.c main.c
 # environment
 WINDIR = C:\WINDOWS
 # environment
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_21036_USUVJQGQZIIIJBUO
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_7564_GBQDNUTTITCAEVUI
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -198,7 +198,7 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 21036
+VSCODE_PID = 7564
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
@@ -210,9 +210,9 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 
 # Directories
 
-# . (device -13143, inode 2693585): 17 files, no impossibilities.
+# . (device -13143, inode 2693585): 19 files, no impossibilities.
 
-# 17 files, no impossibilities in 1 directories.
+# 19 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -221,6 +221,7 @@ USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # Files
 
 # Not a target:
+ 
 all:
 #  Command-line target.
 #  Implicit rule search has been done.
@@ -250,7 +251,7 @@ lexer.c:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-07-26 19:51:23
+#  Last modified 2022-07-27 09:51:08
 #  File has been updated.
 #  Successfully updated.
 # variable set hash-table stats:
@@ -262,7 +263,7 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-make: lexer.c parser.c main.c
+make: lexer.c parser.c interpreter.c main.c
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -271,13 +272,19 @@ make: lexer.c parser.c main.c
 	
 
 # Not a target:
+interpreter.c:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+# Not a target:
 parser.c:
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
 
 # files hash-table stats:
-# Load=8/1024=1%, Rehash=0, Collisions=0/22=0%
+# Load=9/1024=1%, Rehash=0, Collisions=0/24=0%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -289,6 +296,6 @@ parser.c:
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Tue Jul 26 19:51:43 2022
+# Finished Make data base on Wed Jul 27 09:51:14 2022
 
  

@@ -18,6 +18,7 @@
         "stdio.h": "c",
         "parser.h": "c",
         "lexer.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "interpreter.h": "c"
     }
 }
