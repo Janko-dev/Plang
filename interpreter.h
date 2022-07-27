@@ -14,11 +14,18 @@ typedef struct {
 } Obj;
 
 #define ENV_SIZE 100
-typedef struct envList Env;
+
+typedef struct envList EnvMap;
 struct envList {
     struct envList* next;
     char* key;
     Obj* value;
+};
+
+typedef struct Env_t Env;
+struct Env_t {
+    EnvMap** map;
+    struct Env_t* enclosing;
 };
 
 Obj* newObj(enum LiteralType type);
@@ -26,11 +33,13 @@ Obj* newNum(double num);
 Obj* newString(char* string);
 Obj* newBool(bool b);
 
-void freeEnv(Env* env[ENV_SIZE]);
-void define(Env* env[ENV_SIZE], char* key, Obj* value);
-void assign(Env* env[ENV_SIZE], Token* name, Obj* value);
-Obj* get(Env* env[ENV_SIZE], Token* name);
+Env* createEnv(Env* enclosing);
+void freeEnv(Env* env);
 
-void interpret(StmtList* list, Env* env[ENV_SIZE]);
+void define(Env* env, char* key, Obj* value);
+void assign(Env* env, Token* name, Obj* value);
+Obj* get(Env* env, Token* name);
+
+void interpret(StmtList* list, Env* env);
 
 #endif // _INTERPRETER_H

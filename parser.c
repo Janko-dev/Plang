@@ -71,13 +71,13 @@ void freeExpr(Expr* expr){
         free(expr);
     } break;
     case VAREXPR: {
-        free(expr->as.var.name->lexeme);
-        free(expr->as.var.name->literal);
+        // free(expr->as.var.name->lexeme);
+        // free(expr->as.var.name->literal);
         free(expr);
     } break;
     case ASSIGN: {
-        free(expr->as.assign.name->lexeme);
-        free(expr->as.assign.name->literal);
+        // free(expr->as.assign.name->lexeme);
+        // free(expr->as.assign.name->literal);
         freeExpr(expr->as.assign.value);
         free(expr);
     } break;
@@ -93,9 +93,10 @@ void freeStmtList(StmtList* list){
         case PRINT_STMT: freeExpr(list->statements[i].as.print.expression); break;
         case VAR_DECL_STMT: {
             freeExpr(list->statements[i].as.var.initializer);
-            free(list->statements[i].as.var.name->lexeme);
-            free(list->statements[i].as.var.name->literal);
+            // free(list->statements[i].as.var.name->lexeme);
+            // free(list->statements[i].as.var.name->literal);
         } break;
+        case BLOCK_STMT: freeStmtList(list->statements[i].as.block.list); break;
         default: break;
         }
     }
@@ -188,6 +189,12 @@ static Stmt* declStmt(Token* name, Expr* initializer){
     return stmt;
 }
 
+static Stmt* blockStmt(StmtList* list){
+    Stmt* stmt = newStmt(BLOCK_STMT);
+    stmt->as.block.list = list;
+    return stmt;
+}
+
 #pragma endregion Constructors
 
 #pragma region Parse_utils
@@ -275,6 +282,18 @@ static Stmt* statement(){
         }
         advance();
         return printStmt(expr);
+    } else if (check(LEFT_BRACE)) {
+        advance();
+        StmtList* list = (StmtList*)malloc(sizeof(StmtList));
+        initStmtList(list);
+        while (!check(RIGHT_BRACE) && peek()->type != ENDFILE){
+            addStatement(list, *declaration());
+        }
+        if (!check(RIGHT_BRACE)){
+            plerror(peek()->line, PARSE_ERROR, "expected '}' at the end of block statement, but got %s", peek()->lexeme);
+        }
+        advance();
+        return blockStmt(list);
     } else {
         Expr* expr = expression();
         if (!check(SEMICOLON)){

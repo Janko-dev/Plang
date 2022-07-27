@@ -19,6 +19,7 @@ enum StmtType {
     EXPR_STMT,
     PRINT_STMT,
     VAR_DECL_STMT,
+    BLOCK_STMT,
 };
 
 enum LiteralType {
@@ -27,6 +28,15 @@ enum LiteralType {
     STR_T,
     BOOL_T
 };
+
+typedef struct Stmt Stmt;
+
+#define INITIAL_STMTLIST_SIZE 20
+typedef struct {
+    Stmt* statements;
+    size_t index;
+    size_t size;
+} StmtList;
 
 // Expressions
 typedef struct Expr Expr;
@@ -91,6 +101,10 @@ typedef struct {
 } PrintStmt;
 
 typedef struct {
+    StmtList* list;
+} BlockStmt;
+
+typedef struct {
     Token* name;
     Expr* initializer;
 } VarDeclStmt;
@@ -100,16 +114,10 @@ struct Stmt {
     union {
         ExprStmt expr;
         PrintStmt print;
+        BlockStmt block;
         VarDeclStmt var;
     } as;
 };
-
-#define INITIAL_STMTLIST_SIZE 20
-typedef struct {
-    Stmt* statements;
-    size_t index;
-    size_t size;
-} StmtList;
 
 void statementPrinter(Stmt* stmt);
 void freeStmtList(StmtList* list);

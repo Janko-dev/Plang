@@ -12,10 +12,22 @@ static unsigned int hash(char* s){
     return hashval % HASH_SIZE;
 }
 
-void freeEnv(Env* env[ENV_SIZE]){
+Env* createEnv(Env* enclosing){
+    Env* e = (Env*)malloc(sizeof(Env));
+    if (e == NULL){
+        plerror(-1, RUNTIME_ERROR, "Malloc failed at environment initialisation");
+        return NULL;
+    }
+    e->map = (EnvMap**)malloc(sizeof(EnvMap*) * ENV_SIZE);
+    memset(e->map, 0, sizeof(EnvMap*) * ENV_SIZE);
+    e->enclosing = enclosing;
+    return e;
+}
+
+void freeEnvMap(EnvMap** env){
     for (size_t i = 0; i < ENV_SIZE; i++){
-        Env* e = env[i];
-        Env* tmp;
+        EnvMap* e = env[i];
+        EnvMap* tmp;
         while(e != NULL){
             tmp = e;
             e = e->next;
@@ -23,10 +35,17 @@ void freeEnv(Env* env[ENV_SIZE]){
             free(tmp);
         }
     }
+    free(env);
 }
 
-static Env* lookup(Env* env[ENV_SIZE], char* s){
-    Env* e;
+void freeEnv(Env* env){
+    freeEnvMap(env->map);
+    free(env->enclosing);
+    free(env);
+}
+
+static EnvMap* lookup(EnvMap** env, char* s){
+    EnvMap* e;
     for (e = env[hash(s)]; e != NULL; e = e->next){
         if (strcmp(s, e->key) == 0){
             return e;
@@ -41,31 +60,39 @@ static char* strdup(char* s){
     return p;
 }
 
-void define(Env* env[ENV_SIZE], char* key, Obj* value){
-    Env* e;
+void define(Env* env, char* key, Obj* value){
+    EnvMap* e;
     unsigned int hashval;
-    if ((e = lookup(env, key)) == NULL){
-        e = (Env*)malloc(sizeof(*e));
+    if ((e = lookup(env->map, key)) == NULL){
+        e = (EnvMap*)malloc(sizeof(*e));
         if (e == NULL || (e->key = strdup(key)) == NULL) return;
         hashval = hash(key);
-        e->next = env[hashval];
-        env[hashval] = e;
+        e->next = env->map[hashval];
+        env->map[hashval] = e;
     }
     e->value = value;
 }
 
-void assign(Env* env[ENV_SIZE], Token* name, Obj* value){
-    Env* e;
-    if ((e = lookup(env, name->lexeme)) == NULL){
+void assign(Env* env, Token* name, Obj* value){
+    EnvMap* e;
+    if ((e = lookup(env->map, name->lexeme)) == NULL){
+        if (env->enclosing != NULL){
+            assign(env->enclosing, name, value);
+            return;
+        }
         plerror(name->line, RUNTIME_ERROR, "Undefined variable '%s'", name->lexeme);
         return;
     }
+
     e->value = value;
 }
 
-Obj* get(Env* env[ENV_SIZE], Token* name){
-    Env* e;
-    if ((e = lookup(env, name->lexeme)) == NULL){
+Obj* get(Env* env, Token* name){
+    EnvMap* e;
+    if ((e = lookup(env->map, name->lexeme)) == NULL){
+        if (env->enclosing != NULL){
+            return get(env->enclosing, name);
+        }
         plerror(name->line, RUNTIME_ERROR, "Undefined variable '%s'", name->lexeme);
         return newObj(NIL_T);
     }
@@ -111,7 +138,7 @@ int isTruthy(Obj* obj){
     return true;
 }
 
-Obj* evaluate(Expr* expr, Env* env[ENV_SIZE]){
+Obj* evaluate(Expr* expr, Env* env){
     switch (expr->type)
     {
     case BINARY: {
@@ -264,7 +291,7 @@ Obj* evaluate(Expr* expr, Env* env[ENV_SIZE]){
     }
 }
 
-void execute(Stmt* stmt, Env* env[ENV_SIZE]){
+void execute(Stmt* stmt, Env* env){
     switch (stmt->type)
     {
     case EXPR_STMT: evaluate(stmt->as.expr.expression, env); break;
@@ -279,6 +306,13 @@ void execute(Stmt* stmt, Env* env[ENV_SIZE]){
         default: break;
         }
     } break;
+    case BLOCK_STMT: {
+        Env* local = createEnv(env);
+        for (size_t i = 0; i < stmt->as.block.list->index; i++){
+            execute(&stmt->as.block.list->statements[i], local);
+        }
+        freeEnv(local); // free env doesn't work yet
+    } break;
     case VAR_DECL_STMT:{
         if (stmt->as.var.initializer != NULL){
             Obj* init = evaluate(stmt->as.var.initializer, env);
@@ -288,7 +322,7 @@ void execute(Stmt* stmt, Env* env[ENV_SIZE]){
     }
 }
 
-void interpret(StmtList* list, Env* env[ENV_SIZE]){
+void interpret(StmtList* list, Env* env){
     for (size_t i = 0; i < list->index; i++){
         execute(&list->statements[i], env);
     }
