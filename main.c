@@ -12,11 +12,11 @@ void run(char* source, Env* env[ENV_SIZE]){
     StmtList* stmtList = parse(tokenlist);
     
     if (!hadError){
-        // printf("\n");
-        // for (size_t i = 0; i < stmtList->index; i++){
-        //     // statementPrinter(&stmtList->statements[i]);
-        //     // printf("\n");
-        // }
+        printf("\n");
+        for (size_t i = 0; i < stmtList->index; i++){
+            statementPrinter(&stmtList->statements[i]);
+            printf("\n");
+        }
         interpret(stmtList, env);
     }
     // double val = 10.0;
