@@ -12,16 +12,16 @@ void run(char* source, Env* env){
     StmtList* stmtList = parse(tokenlist);
     
     if (!hadError){
-        // printf("\n");
-        // for (size_t i = 0; i < stmtList->index; i++){
-        //     statementPrinter(&stmtList->statements[i]);
-        //     printf("\n");
-        // }
+        printf("\n");
+        for (size_t i = 0; i < stmtList->index; i++){
+            statementPrinter(&stmtList->statements[i]);
+            printf("\n");
+        }
         interpret(stmtList, env);
     }
     
     freeStmtList(stmtList);
-    // freeTokenList(tokenlist);
+    freeTokenList(tokenlist);
 }
 
 void runFile(const char* path){

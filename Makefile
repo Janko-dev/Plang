@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -std=c99
+CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -O0 -std=c99
 IN = lexer.c parser.c interpreter.c main.c
 OUT = plang
 

@@ -20,6 +20,8 @@ enum StmtType {
     PRINT_STMT,
     VAR_DECL_STMT,
     BLOCK_STMT,
+    IF_STMT,
+    WHILE_STMT,
 };
 
 enum LiteralType {
@@ -109,6 +111,17 @@ typedef struct {
     Expr* initializer;
 } VarDeclStmt;
 
+typedef struct {
+    Expr* cond;
+    Stmt* trueBranch;
+    Stmt* falseBranch;
+} IfStmt;
+
+typedef struct {
+    Expr* cond;
+    Stmt* body;
+} WhileStmt;
+
 struct Stmt {
     enum StmtType type;
     union {
@@ -116,6 +129,8 @@ struct Stmt {
         PrintStmt print;
         BlockStmt block;
         VarDeclStmt var;
+        IfStmt if_stmt;
+        WhileStmt while_stmt;
     } as;
 };
 

@@ -1,8 +1,0 @@
-var a = 100;
-{
-    var a = 4;
-    {
-        var a = 10;
-    }
-    print a;
-}

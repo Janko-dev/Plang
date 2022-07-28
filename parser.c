@@ -46,40 +46,55 @@ void freeExpr(Expr* expr){
     case BINARY: {
         freeExpr(expr->as.binary.left);
         free(expr->as.binary.left);
+        expr->as.binary.left = NULL;
         freeExpr(expr->as.binary.right);
         free(expr->as.binary.right);
+        expr->as.binary.right = NULL;
         free(expr);
+        expr = NULL;
     } break;
     case TERNARY: {
         freeExpr(expr->as.ternary.cond);
         free(expr->as.ternary.cond);
+        expr->as.ternary.cond = NULL;
         freeExpr(expr->as.ternary.trueBranch);
         free(expr->as.ternary.trueBranch);
+        expr->as.ternary.trueBranch = NULL;
         freeExpr(expr->as.ternary.falseBranch);
         free(expr->as.ternary.falseBranch);
+        expr->as.ternary.falseBranch = NULL;
         free(expr);
+        expr = NULL;
     } break;
     case UNARY: {
         freeExpr(expr->as.unary.right);
         free(expr->as.unary.right);
+        expr->as.unary.right = NULL;
         free(expr);
+        expr = NULL;
     } break;
-    case LITERAL: free(expr->as.literal.value); free(expr); break;
+    case LITERAL: {
+        free(expr->as.literal.value); 
+        expr->as.literal.value = NULL;
+        free(expr);
+        expr = NULL;
+    } break;
     case GROUPING: {
         freeExpr(expr->as.group.expression);
         free(expr->as.group.expression);
+        expr->as.group.expression = NULL;
         free(expr);
+        expr = NULL;
     } break;
     case VAREXPR: {
-        // free(expr->as.var.name->lexeme);
-        // free(expr->as.var.name->literal);
         free(expr);
+        expr = NULL;
     } break;
     case ASSIGN: {
-        // free(expr->as.assign.name->lexeme);
-        // free(expr->as.assign.name->literal);
         freeExpr(expr->as.assign.value);
+        expr->as.assign.value = NULL;
         free(expr);
+        expr = NULL;
     } break;
     default: break;
     }
@@ -91,16 +106,13 @@ void freeStmtList(StmtList* list){
         {
         case EXPR_STMT: freeExpr(list->statements[i].as.expr.expression); break;
         case PRINT_STMT: freeExpr(list->statements[i].as.print.expression); break;
-        case VAR_DECL_STMT: {
-            freeExpr(list->statements[i].as.var.initializer);
-            // free(list->statements[i].as.var.name->lexeme);
-            // free(list->statements[i].as.var.name->literal);
-        } break;
+        case VAR_DECL_STMT: freeExpr(list->statements[i].as.var.initializer); break;
         case BLOCK_STMT: freeStmtList(list->statements[i].as.block.list); break;
         default: break;
         }
     }
     free(list);
+    list = NULL;
 }
 
 #pragma endregion List_utils
@@ -195,6 +207,21 @@ static Stmt* blockStmt(StmtList* list){
     return stmt;
 }
 
+static Stmt* ifStmt(Expr* cond, Stmt* trueBranch, Stmt* falseBranch){
+    Stmt* stmt = newStmt(IF_STMT);
+    stmt->as.if_stmt.cond = cond;
+    stmt->as.if_stmt.trueBranch = trueBranch;
+    stmt->as.if_stmt.falseBranch = falseBranch;
+    return stmt;
+}
+
+static Stmt* whileStmt(Expr* cond, Stmt* body){
+    Stmt* stmt = newStmt(WHILE_STMT);
+    stmt->as.while_stmt.cond = cond;
+    stmt->as.while_stmt.body = body;
+    return stmt;
+}
+
 #pragma endregion Constructors
 
 #pragma region Parse_utils
@@ -226,6 +253,7 @@ static bool match(enum TokenTypes* types, int size){
     }
     return false;
 }
+
 #pragma endregion parse_utils
 
 #pragma region Grammar
@@ -282,6 +310,37 @@ static Stmt* statement(){
         }
         advance();
         return printStmt(expr);
+    } else if (check(IF)){
+        advance();
+        if (!check(LEFT_PAREN)){
+            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'if' keyword, but got %s", peek()->lexeme);
+        }
+        advance();
+        Expr* cond = expression();
+        if (!check(RIGHT_PAREN)){
+            plerror(peek()->line, PARSE_ERROR, "expected ')' after condition of if-statement, but got %s", peek()->lexeme);
+        }
+        advance();
+        Stmt* trueBranch = statement();
+        Stmt* falseBranch = NULL;
+        if (check(ELSE)){
+            advance();
+            falseBranch = statement();
+        }
+        return ifStmt(cond, trueBranch, falseBranch);
+    } else if (check(WHILE)){
+        advance();
+        if (!check(LEFT_PAREN)){
+            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'while' keyword, but got %s", peek()->lexeme);
+        }
+        advance();
+        Expr* cond = expression();
+        if (!check(RIGHT_PAREN)){
+            plerror(peek()->line, PARSE_ERROR, "expected ')' after condition of while-statement, but got %s", peek()->lexeme);
+        }
+        advance();
+        Stmt* body = statement();
+        return whileStmt(cond, body);
     } else if (check(LEFT_BRACE)) {
         advance();
         StmtList* list = (StmtList*)malloc(sizeof(StmtList));
@@ -492,6 +551,32 @@ void statementPrinter(Stmt* stmt){
         if (stmt->as.var.initializer != NULL)
             expressionPrinter(stmt->as.var.initializer);
         printf(" )");
+    } break;
+    case IF_STMT: {
+        printf("( if ");
+        expressionPrinter(stmt->as.if_stmt.cond);
+        printf(" then ");
+        statementPrinter(stmt->as.if_stmt.trueBranch);
+        if (stmt->as.if_stmt.falseBranch != NULL){
+            printf(" else ");
+            statementPrinter(stmt->as.if_stmt.falseBranch);
+        }
+        printf(" )");
+    } break;
+    case WHILE_STMT: {
+        printf("( while ");
+        expressionPrinter(stmt->as.while_stmt.cond);
+        printf(" then ");
+        statementPrinter(stmt->as.while_stmt.body);
+        printf(" )");
+    } break;
+    case BLOCK_STMT: {
+        printf("( block [ ");
+        for (size_t i = 0; i < stmt->as.block.list->index; i++){
+            printf("\n");
+            statementPrinter(&stmt->as.block.list->statements[i]);
+        }
+        printf("\n] )");
     } break;
     default: break;
     }

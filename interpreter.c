@@ -19,6 +19,10 @@ Env* createEnv(Env* enclosing){
         return NULL;
     }
     e->map = (EnvMap**)malloc(sizeof(EnvMap*) * ENV_SIZE);
+    if (e == NULL){
+        plerror(-1, RUNTIME_ERROR, "Malloc failed at environment initialisation");
+        return NULL;
+    }
     memset(e->map, 0, sizeof(EnvMap*) * ENV_SIZE);
     e->enclosing = enclosing;
     return e;
@@ -32,16 +36,20 @@ void freeEnvMap(EnvMap** env){
             tmp = e;
             e = e->next;
             free(tmp->key);
+            tmp->key = NULL;
             free(tmp);
+            tmp = NULL;
         }
     }
     free(env);
+    env = NULL;
 }
 
 void freeEnv(Env* env){
     freeEnvMap(env->map);
-    free(env->enclosing);
+    env->map = NULL;
     free(env);
+    env = NULL;
 }
 
 static EnvMap* lookup(EnvMap** env, char* s){
@@ -255,7 +263,7 @@ Obj* evaluate(Expr* expr, Env* env){
                     plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right->type]);
                     return newObj(NIL_T);
                 }
-                right->as.num *= -1;
+                right->as.num = -right->as.num;
                 return right;
             };
             case BANG: {
@@ -305,6 +313,10 @@ void execute(Stmt* stmt, Env* env){
         case STR_T:  printf("%s\n", val->as.string); break;
         default: break;
         }
+        for (size_t i = 0; i < ENV_SIZE; i++){
+            if (env->map[i] == NULL) continue;
+            printf("ENV: %s\n", env->map[i]->key);
+        }
     } break;
     case BLOCK_STMT: {
         Env* local = createEnv(env);
@@ -319,6 +331,20 @@ void execute(Stmt* stmt, Env* env){
             define(env, stmt->as.var.name->lexeme, init);
         } else define(env, stmt->as.var.name->lexeme, newObj(NIL_T)); 
     } break;
+    case IF_STMT: {
+        Obj* cond = evaluate(stmt->as.if_stmt.cond, env);
+        if (isTruthy(cond)){
+            execute(stmt->as.if_stmt.trueBranch, env);
+        } else if (stmt->as.if_stmt.falseBranch != NULL){
+            execute(stmt->as.if_stmt.falseBranch, env);
+        }
+    } break;
+    case WHILE_STMT: {
+        while (isTruthy(evaluate(stmt->as.while_stmt.cond, env))){
+            execute(stmt->as.while_stmt.body, env);
+        }
+    } break;
+    default: break;
     }
 }
 

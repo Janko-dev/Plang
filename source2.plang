@@ -1,6 +1,6 @@
-var x = "hello world";
-var cool = 25;
+var i = 0;
 
-if (len(x) < 30 && cool == 25){
-    print "epic";
+while (i < 20){
+    print i;
+    i = i + 1;
 }

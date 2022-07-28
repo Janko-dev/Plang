@@ -175,12 +175,15 @@ void addIdentifier(TokenList* list){
 void freeTokenList(TokenList* list){
     for (size_t i = 0; i < list->index; i++) {
         free(list->tokens[i].lexeme);
+        list->tokens[i].lexeme = NULL;
         free(list->tokens[i].literal);
+        list->tokens[i].literal = NULL;
     }
     free(list->tokens);
     list->tokens = NULL; // don't want dangling values (use after free!)
     list->index = list->size = 0;
     free(list);
+    list = NULL;
 }
 
 void printTokenlist(TokenList* list){
