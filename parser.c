@@ -9,6 +9,8 @@ static Stmt* varDecl();
 static Stmt* statement();
 
 static Expr* expression();
+static Expr* or();
+static Expr* and();
 static Expr* equality();
 static Expr* comparison();
 static Expr* term();
@@ -341,6 +343,74 @@ static Stmt* statement(){
         advance();
         Stmt* body = statement();
         return whileStmt(cond, body);
+    } else if (check(FOR)){
+        advance();
+        if (!check(LEFT_PAREN)){
+            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'for' keyword, but got %s", peek()->lexeme);
+        }
+        advance();
+        Stmt* decl = NULL;
+        if (check(VAR)){
+            advance();
+            decl = varDecl();
+        } else if (check(SEMICOLON)){
+            advance();
+        } else {
+            decl = exprStmt(expression());
+            if (!check(SEMICOLON)){
+                plerror(peek()->line, PARSE_ERROR, "expected ';' after expression in for-statement, but got %s", peek()->lexeme);
+            }
+            advance();
+        }
+        Expr* cond = NULL;
+        if (check(SEMICOLON)){ // for (x; x < 10; )
+            advance();
+        } else {
+            cond = expression();
+            if (!check(SEMICOLON)){
+                plerror(peek()->line, PARSE_ERROR, "expected ';' after expression in for-statement, but got %s", peek()->lexeme);
+            }
+            advance();
+        }
+
+        Expr* incr = NULL;
+        if (check(RIGHT_PAREN)){
+            advance();
+            
+        } else {
+            incr = expression();
+            if (!check(RIGHT_PAREN)){
+                plerror(peek()->line, PARSE_ERROR, "expected ')' after for-statement header, but got %s", peek()->lexeme);
+            }
+            advance();
+        }
+
+        Stmt* loop_body = statement();
+        StmtList* body = (StmtList*)malloc(sizeof(StmtList));
+        initStmtList(body);
+        addStatement(body, *loop_body);
+        free(loop_body);
+
+        
+        if (incr != NULL) {
+            Stmt* incrStmt = exprStmt(incr);
+            addStatement(body, *incrStmt);
+            free(incrStmt);
+        }
+        StmtList* list = (StmtList*)malloc(sizeof(StmtList)); 
+        initStmtList(list);
+        if (decl != NULL) {
+            addStatement(list, *decl);
+            free(decl);
+        }
+
+        if (cond == NULL) cond = literalExpr(BOOL_T, (void*)true);
+        
+        Stmt* loop = whileStmt(cond, blockStmt(body));
+        addStatement(list, *loop);
+        free(loop);
+        return blockStmt(list);
+
     } else if (check(LEFT_BRACE)) {
         advance();
         StmtList* list = (StmtList*)malloc(sizeof(StmtList));
@@ -364,7 +434,7 @@ static Stmt* statement(){
 }
 
 static Expr* expression(){
-    Expr* expr = equality();
+    Expr* expr = or();
     if (check(EQUAL)){
         Token* equal = previous();
         advance();
@@ -387,6 +457,28 @@ static Expr* expression(){
         }
     } 
     return expr;
+}
+
+static Expr* or(){
+    Expr* left = and();
+    enum TokenTypes types[1] = {OR};
+    while(match(types, 1)){
+        Token* op = previous();
+        Expr* right = and();
+        left = binaryExpr(op, left, right);
+    }
+    return left;
+}
+
+static Expr* and(){
+    Expr* left = equality();
+    enum TokenTypes types[1] = {AND};
+    while(match(types, 1)){
+        Token* op = previous();
+        Expr* right = equality();
+        left = binaryExpr(op, left, right);
+    }
+    return left;
 }
 
 static Expr* equality(){

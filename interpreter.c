@@ -150,6 +150,16 @@ Obj* evaluate(Expr* expr, Env* env){
     switch (expr->type)
     {
     case BINARY: {
+        if (expr->as.binary.op->type == AND){
+            Obj* left = evaluate(expr->as.binary.left, env);
+            if (!isTruthy(left)) return newBool(false);
+            return evaluate(expr->as.binary.right, env);
+        } else if (expr->as.binary.op->type == OR){
+            Obj* left = evaluate(expr->as.binary.left, env);
+            if (isTruthy(left)) return newBool(true);
+            return evaluate(expr->as.binary.right, env);
+        }
+        
         Obj* left = evaluate(expr->as.binary.left, env);
         Obj* right = evaluate(expr->as.binary.right, env);
 
@@ -280,7 +290,7 @@ Obj* evaluate(Expr* expr, Env* env){
         switch (expr->as.literal.type){
         case NUM_T: return newNum(*(double*)expr->as.literal.value);
         case STR_T: return newString((char*)expr->as.literal.value);
-        case BOOL_T: return newBool(*(bool*)expr->as.literal.value);
+        case BOOL_T: return newBool(expr->as.literal.value ? true : false);
         case NIL_T: return newObj(NIL_T);
         default: plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
             return newObj(NIL_T);
@@ -313,17 +323,13 @@ void execute(Stmt* stmt, Env* env){
         case STR_T:  printf("%s\n", val->as.string); break;
         default: break;
         }
-        for (size_t i = 0; i < ENV_SIZE; i++){
-            if (env->map[i] == NULL) continue;
-            printf("ENV: %s\n", env->map[i]->key);
-        }
     } break;
     case BLOCK_STMT: {
         Env* local = createEnv(env);
         for (size_t i = 0; i < stmt->as.block.list->index; i++){
             execute(&stmt->as.block.list->statements[i], local);
         }
-        freeEnv(local); // free env doesn't work yet
+        freeEnv(local);
     } break;
     case VAR_DECL_STMT:{
         if (stmt->as.var.initializer != NULL){

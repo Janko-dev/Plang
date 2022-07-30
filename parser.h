@@ -22,6 +22,7 @@ enum StmtType {
     BLOCK_STMT,
     IF_STMT,
     WHILE_STMT,
+    FOR_STMT,
 };
 
 enum LiteralType {
