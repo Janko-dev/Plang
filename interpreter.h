@@ -1,11 +1,11 @@
 #ifndef _INTERPRETER_H
 #define _INTERPRETER_H
 
-#include "lexer.h"
+#include "tokenizer.h"
 #include "parser.h"
 
 typedef struct {
-    enum LiteralType type;
+    ValueType type;
     union {
         double num;
         char* string;
@@ -28,7 +28,7 @@ struct Env_t {
     struct Env_t* enclosing;
 };
 
-Obj* newObj(enum LiteralType type);
+Obj* newObj(ValueType type);
 Obj* newNum(double num);
 Obj* newString(char* string);
 Obj* newBool(bool b);

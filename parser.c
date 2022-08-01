@@ -19,8 +19,8 @@ static Expr* unary();
 static Expr* primary();
 
 // global variables
-static long current;
-static TokenList* tokensList;
+// static long current;
+// static TokenList* tokensList;
 
 #pragma region List_utils
 

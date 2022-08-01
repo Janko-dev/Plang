@@ -1,11 +1,11 @@
 #ifndef _PARSER_H
 #define _PARSER_H
 
-#include "lexer.h"
+#include "tokenizer.h"
 #include <stdarg.h>
 
 // Enum types
-enum ExprType {
+typedef enum {
     BINARY,
     TERNARY,
     UNARY,
@@ -13,9 +13,9 @@ enum ExprType {
     GROUPING,
     VAREXPR,
     ASSIGN,
-};
+} ExprType;
 
-enum StmtType {
+typedef enum {
     EXPR_STMT,
     PRINT_STMT,
     VAR_DECL_STMT,
@@ -23,18 +23,18 @@ enum StmtType {
     IF_STMT,
     WHILE_STMT,
     FOR_STMT,
-};
+} StmtType;
 
-enum LiteralType {
+typedef enum {
     NIL_T,
     NUM_T,
     STR_T,
     BOOL_T
-};
+} ValueType;
 
 typedef struct Stmt Stmt;
 
-#define INITIAL_STMTLIST_SIZE 20
+#define INITIAL_STMTLIST_SIZE 100
 typedef struct {
     Stmt* statements;
     size_t index;
@@ -62,8 +62,12 @@ typedef struct {
 } UnaryExpr;
 
 typedef struct {
-    enum LiteralType type;
-    void* value;
+    ValueType type;
+    union {
+        double number;
+        bool boolean;
+        char* string;
+    } as;
 } LiteralExpr;
 
 typedef struct {
@@ -80,7 +84,7 @@ typedef struct {
 } AssignExpr;
 
 struct Expr {
-    enum ExprType type;
+    ExprType type;
     union {
         BinaryExpr binary;
         TernaryExpr ternary;
@@ -124,7 +128,7 @@ typedef struct {
 } WhileStmt;
 
 struct Stmt {
-    enum StmtType type;
+    StmtType type;
     union {
         ExprStmt expr;
         PrintStmt print;
@@ -135,8 +139,16 @@ struct Stmt {
     } as;
 };
 
+typedef struct {
+    StmtList* statements;
+    
+    Tokenizer* tokenizer;
+    size_t current_token;
+
+} Parser;
+
 void statementPrinter(Stmt* stmt);
 void freeStmtList(StmtList* list);
-StmtList* parse(TokenList* list);
+// StmtList* parse(TokenList* list);
 
 #endif //_PARSER_H
