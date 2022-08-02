@@ -1,6 +1,6 @@
 // #include "lexer.h"
 #include "tokenizer.h"
-// #include "parser.h"
+#include "parser.h"
 // #include "interpreter.h"
 #include "utils.h"
 
@@ -34,11 +34,18 @@ void runFile(const char* path){
     // run(source, env);
     // freeEnv(env);
 
+    // printf("%s", source);
     Tokenizer* tokenizer = create_tokenizer(source);
     tokenize(tokenizer);
-    if (!hadError) print_tokens(tokenizer);
-    // free_tokenizer(tokenizer);
 
+    Parser* parser = create_parser(tokenizer);
+    if (!hadError) print_tokens(parser->tokenizer);
+
+    parse(parser);
+    print_statements(parser);
+
+    free_tokenizer(tokenizer);
+    free_parser(parser);
     // if (hadError) exit(1);
 }
 

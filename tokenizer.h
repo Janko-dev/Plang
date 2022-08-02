@@ -29,7 +29,7 @@ typedef enum {
     ENDFILE,
 } TokenType;
 
-#define INITIAL_TOKENLIST_SIZE 20
+#define INITIAL_TOKENLIST_SIZE 100
 
 typedef struct {
     TokenType type;
@@ -45,9 +45,9 @@ typedef struct {
 #define HASHTABLE_SIZE 100
 typedef struct node_t Node;
 struct node_t {
-    Node* next;
-    char* key;
     TokenType value;
+    char* key;
+    Node* next;
 };
 
 typedef struct {
@@ -66,6 +66,7 @@ typedef struct {
 char* read_source_file(const char* file_path);
 Tokenizer* create_tokenizer(char* text);
 void free_tokenizer(Tokenizer* tokenizer);
+
 void tokenize(Tokenizer* tokenizer);
 void print_tokens(Tokenizer* tokenizer);
 

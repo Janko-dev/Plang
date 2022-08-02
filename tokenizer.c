@@ -24,9 +24,9 @@ char* read_source_file(const char* file_path){
 
 unsigned int hash(char* s){
     unsigned long hash = 5381;
-    int c;
-    while ((c = *s++))
-        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+    for (size_t i = 0; s[i] != '\0'; i++){
+        hash = ((hash << 5) + hash) + (int)s[i]; /* hash * 33 + c */
+    }
     return hash % HASHTABLE_SIZE;
 }
 
@@ -44,9 +44,9 @@ void put(Node* hashtable[HASHTABLE_SIZE], char* key, TokenType val){
 
     Node* h_list;
     if ((h_list = lookup(hashtable, key)) == NULL){
-        h_list = (Node*)malloc(sizeof(*h_list));
+        h_list = (Node*)malloc(sizeof(Node));
         if (h_list == NULL) {
-            plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for hashtable node");
+            plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for hashtable node: %s", key);
             exit(1);
         }
         
@@ -129,6 +129,15 @@ void free_tokenizer(Tokenizer* tokenizer){
     tokenizer = NULL;
 }
 
+static int get_column(Tokenizer* tokenizer){
+    int col;
+    size_t cur = tokenizer->current_char;
+    // TODO: when a single " is in the .plang file, segfault happens
+    // there seems to be a relationship between a single " and malloc NULL
+    for (col = 1; cur-col > 0 && tokenizer->source[cur-col] != '\n'; col++);
+    return col;
+}
+
 static bool match(Tokenizer* tokenizer, char expected){
     if (tokenizer->current_char >= tokenizer->source_len) return false;
     if (tokenizer->source[tokenizer->current_char] != expected) return false;
@@ -179,6 +188,7 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
             literal[i-tokenizer->start_char] = tokenizer->source[i];
         literal[i-tokenizer->start_char] = '\0';
         tokenizer->tokens[tokenizer->list_index].lit.number = atof(literal);
+        free(literal);
     } else if (type == STRING){
         literal = malloc(tokenizer->current_char - tokenizer->start_char - 2 + 1); // -2 for quotes and +1 for '\0'
         if (literal == NULL) {
@@ -191,20 +201,22 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
         literal[i-(tokenizer->start_char+1)] = '\0';
         tokenizer->tokens[tokenizer->list_index].lit.string = literal;
     }
-    free(literal);
     tokenizer->list_index++;
 }
 
 void addString(Tokenizer* tokenizer){
     while(peek(tokenizer) != '"' && tokenizer->current_char < tokenizer->source_len){
         if (peek(tokenizer) == '\n') {
-            plerror(tokenizer->current_line, tokenizer->current_char, TOKEN_ERR, "Unterminated string literal, newline found");
+            plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unterminated string literal");
+            return;
         }
         advance(tokenizer);
     }
+    printf("\n");
 
     if (tokenizer->current_char >= tokenizer->source_len) {
-        plerror(tokenizer->current_line, tokenizer->current_char, TOKEN_ERR, "Unterminated string literal, newline found");
+        plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unterminated string literal");
+        return;
     }
 
     advance(tokenizer);
@@ -224,7 +236,7 @@ void addNumber(Tokenizer* tokenizer){
 void addIdentifier(Tokenizer* tokenizer){
     while(isalnum(peek(tokenizer))) advance(tokenizer);
     size_t n = tokenizer->current_char - tokenizer->start_char;
-    char* buf = (char*)malloc(n);
+    char* buf = (char*)malloc(n*sizeof(char));
     if (buf == NULL) {
         plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for string literal\n");
         exit(1);
@@ -291,9 +303,7 @@ void tokenize(Tokenizer* tokenizer){
                 } else if (isalpha(c)) {
                     addIdentifier(tokenizer);
                 } else {
-                    int col;
-                    for (col = 0; tokenizer->source[tokenizer->start_char-col] != '\n'; col++);
-                    plerror(tokenizer->current_line, col, TOKEN_ERR, "Unexpected character '%c'", c);
+                    plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unexpected character '%c'", c);
                 }
             } break;
         }

@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -O0 -pedantic -std=c99
-IN = tokenizer.c main.c
+CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -std=c99
+IN = tokenizer.c parser.c main.c
 OUT = plang
 
 make: $(IN)

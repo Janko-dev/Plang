@@ -2,7 +2,6 @@
 #define _PARSER_H
 
 #include "tokenizer.h"
-#include <stdarg.h>
 
 // Enum types
 typedef enum {
@@ -16,6 +15,7 @@ typedef enum {
 } ExprType;
 
 typedef enum {
+    NULL_STMT,
     EXPR_STMT,
     PRINT_STMT,
     VAR_DECL_STMT,
@@ -31,15 +31,6 @@ typedef enum {
     STR_T,
     BOOL_T
 } ValueType;
-
-typedef struct Stmt Stmt;
-
-#define INITIAL_STMTLIST_SIZE 100
-typedef struct {
-    Stmt* statements;
-    size_t index;
-    size_t size;
-} StmtList;
 
 // Expressions
 typedef struct Expr Expr;
@@ -97,7 +88,15 @@ struct Expr {
 };
 
 // statements
+
 typedef struct Stmt Stmt;
+
+#define INITIAL_STMTLIST_SIZE 100
+typedef struct {
+    size_t index;
+    size_t size;
+    Stmt* statements;
+} StmtList;
 
 typedef struct {
     Expr* expression;
@@ -140,15 +139,17 @@ struct Stmt {
 };
 
 typedef struct {
-    StmtList* statements;
+    StmtList* stmt_list;
     
     Tokenizer* tokenizer;
     size_t current_token;
 
 } Parser;
 
-void statementPrinter(Stmt* stmt);
-void freeStmtList(StmtList* list);
-// StmtList* parse(TokenList* list);
+Parser* create_parser(Tokenizer* tokenizer);
+void free_parser(Parser* parser);
+
+void parse(Parser* parser);
+void print_statements(Parser* parser);
 
 #endif //_PARSER_H

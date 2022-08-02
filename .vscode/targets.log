@@ -10,7 +10,7 @@ make.exe all --print-data-base --no-builtin-variables --no-builtin-rules --quest
 make.exe: *** No rule to make target `all'.  Stop.
 
 
-# Make data base, printed on Mon Aug  1 16:15:20 2022
+# Make data base, printed on Tue Aug  2 21:17:33 2022
 
 # Variables
 
@@ -18,11 +18,11 @@ make.exe: *** No rule to make target `all'.  Stop.
 <D = $(patsubst %/,%,$(dir $<))
 # automatic
 ?F = $(notdir $?)
- 
 # makefile
 MAKEFLAGS = Rrqp
 # automatic
 ?D = $(patsubst %/,%,$(dir $?))
+ 
 # automatic
 @D = $(patsubst %/,%,$(dir $@))
 # environment
@@ -36,13 +36,13 @@ CURDIR := /c/Users/janba/C-dev/Plang
 # default
 SHELL := /bin/sh
 # makefile (from `Makefile', line 3)
-IN = tokenizer.c main.c
+IN = tokenizer.c parser.c main.c
 # environment
 WINDIR = C:\WINDOWS
 # environment
 VSCODE_NLS_CONFIG = {"locale":"nl","availableLanguages":{},"_languagePackSupport":true}
 # makefile (from `Makefile', line 2)
-CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -O0 -pedantic -std=c99
+CFLAGS = -Wall -Wextra -Wno-unknown-pragmas -g -std=c99
 # environment
 ONEDRIVE = C:\Users\janba\OneDrive
 # environment
@@ -80,7 +80,7 @@ ELECTRON_RUN_AS_NODE = 1
 # automatic
 %F = $(notdir $%)
 # environment
-CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_7484_JVNMXMQOXNCZYYOP
+CHROME_CRASHPAD_PIPE_NAME = \\.\pipe\crashpad_13432_XDSTRXLRNJYIYQSH
 # environment
 COMPUTERNAME = DESKTOP-3AAR4JN
 # environment
@@ -198,7 +198,7 @@ PROCESSOR_LEVEL = 23
 # environment
 TERM = cygwin
 # environment
-VSCODE_PID = 7484
+VSCODE_PID = 13432
 # environment
 USERDOMAIN_ROAMINGPROFILE = DESKTOP-3AAR4JN
 # variable set hash-table stats:
@@ -232,7 +232,6 @@ all:
 #  Implicit rule search has been done.
 #  File does not exist.
 #  File has not been updated.
- 
 # variable set hash-table stats:
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
 
@@ -251,8 +250,9 @@ main.c:
 # Not a target:
 Makefile:
 #  Implicit rule search has been done.
-#  Last modified 2022-08-01 15:42:39
+#  Last modified 2022-08-02 20:34:39
 #  File has been updated.
+ 
 #  Successfully updated.
 # variable set hash-table stats:
 # Load=0/32=0%, Rehash=0, Collisions=0/0=0%
@@ -263,7 +263,7 @@ Makefile:
 #  Modification time never checked.
 #  File has not been updated.
 
-make: tokenizer.c main.c
+make: tokenizer.c parser.c main.c
 #  Implicit rule search has not been done.
 #  Modification time never checked.
 #  File has not been updated.
@@ -271,8 +271,14 @@ make: tokenizer.c main.c
 	$(CC) $(IN) -o $(OUT) $(CFLAGS)
 	
 
+# Not a target:
+parser.c:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
 # files hash-table stats:
-# Load=7/1024=1%, Rehash=0, Collisions=0/20=0%
+# Load=8/1024=1%, Rehash=0, Collisions=0/22=0%
 # VPATH Search Paths
 
 # No `vpath' search paths.
@@ -284,6 +290,6 @@ make: tokenizer.c main.c
 # strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
 # strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
 
-# Finished Make data base on Mon Aug  1 16:15:20 2022
+# Finished Make data base on Tue Aug  2 21:17:33 2022
 
  

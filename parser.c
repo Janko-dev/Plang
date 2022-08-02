@@ -4,85 +4,91 @@
 #define UTILS_IMPLEMENT
 #include "utils.h"
 
-static Stmt* declaration();
-static Stmt* varDecl();
-static Stmt* statement();
+static Stmt declaration(Parser* parser);
+static Stmt var_decl(Parser* parser);
+static Stmt statement(Parser* parser);
 
-static Expr* expression();
-static Expr* or();
-static Expr* and();
-static Expr* equality();
-static Expr* comparison();
-static Expr* term();
-static Expr* factor();
-static Expr* unary();
-static Expr* primary();
-
-// global variables
-// static long current;
-// static TokenList* tokensList;
+static Expr* expression(Parser* parser);
+static Expr* or(Parser* parser);
+static Expr* and(Parser* parser);
+static Expr* equality(Parser* parser);
+static Expr* comparison(Parser* parser);
+static Expr* term(Parser* parser);
+static Expr* factor(Parser* parser);
+static Expr* unary(Parser* parser);
+static Expr* primary(Parser* parser);
 
 #pragma region List_utils
 
-void initStmtList(StmtList* list){
-    list->statements = malloc(sizeof(Stmt) * INITIAL_STMTLIST_SIZE);
+StmtList* init_stmt_list(){
+    StmtList* list = (StmtList*)malloc(sizeof(StmtList));
+    if (list == NULL){
+        plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for StmtList");
+        exit(1);
+    }
+    list->statements = (Stmt*)malloc(sizeof(Stmt) * INITIAL_STMTLIST_SIZE);
     if (list->statements == NULL){
-        plerror(-1, PARSE_ERROR, "Malloc failed at init statement list");
+        plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for statements");
+        free(list);
+        exit(1);
     }
     list->index = 0;
     list->size = INITIAL_STMTLIST_SIZE;
+    return list;
 }
 
-void addStatement(StmtList* list, Stmt stmt){
+void add_statement(StmtList* list, Stmt stmt){
     if (list->index == list->size){
         list->size *= 2;
         list->statements = realloc(list->statements, sizeof(Stmt) * list->size);
+        if (list->statements == NULL){
+            plerror(-1, -1, MEMORY_ERR, "Couldn't reallocate memory for statements");
+            exit(1);
+        }
     }
     list->statements[list->index++] = stmt;
 }
 
-void freeExpr(Expr* expr){
+void free_expr(Expr* expr){
     if (expr == NULL) return;
     switch (expr->type)
     {
     case BINARY: {
-        freeExpr(expr->as.binary.left);
+        free_expr(expr->as.binary.left);
         free(expr->as.binary.left);
         expr->as.binary.left = NULL;
-        freeExpr(expr->as.binary.right);
+        free_expr(expr->as.binary.right);
         free(expr->as.binary.right);
         expr->as.binary.right = NULL;
         free(expr);
         expr = NULL;
     } break;
     case TERNARY: {
-        freeExpr(expr->as.ternary.cond);
+        free_expr(expr->as.ternary.cond);
         free(expr->as.ternary.cond);
         expr->as.ternary.cond = NULL;
-        freeExpr(expr->as.ternary.trueBranch);
+        free_expr(expr->as.ternary.trueBranch);
         free(expr->as.ternary.trueBranch);
         expr->as.ternary.trueBranch = NULL;
-        freeExpr(expr->as.ternary.falseBranch);
+        free_expr(expr->as.ternary.falseBranch);
         free(expr->as.ternary.falseBranch);
         expr->as.ternary.falseBranch = NULL;
         free(expr);
         expr = NULL;
     } break;
     case UNARY: {
-        freeExpr(expr->as.unary.right);
+        free_expr(expr->as.unary.right);
         free(expr->as.unary.right);
         expr->as.unary.right = NULL;
         free(expr);
         expr = NULL;
     } break;
     case LITERAL: {
-        free(expr->as.literal.value); 
-        expr->as.literal.value = NULL;
         free(expr);
         expr = NULL;
     } break;
     case GROUPING: {
-        freeExpr(expr->as.group.expression);
+        free_expr(expr->as.group.expression);
         free(expr->as.group.expression);
         expr->as.group.expression = NULL;
         free(expr);
@@ -93,7 +99,7 @@ void freeExpr(Expr* expr){
         expr = NULL;
     } break;
     case ASSIGN: {
-        freeExpr(expr->as.assign.value);
+        free_expr(expr->as.assign.value);
         expr->as.assign.value = NULL;
         free(expr);
         expr = NULL;
@@ -102,19 +108,35 @@ void freeExpr(Expr* expr){
     }
 }
 
-void freeStmtList(StmtList* list){
-    for (size_t i = 0; i < list->index; i++){
-        switch(list->statements[i].type)
-        {
-        case EXPR_STMT: freeExpr(list->statements[i].as.expr.expression); break;
-        case PRINT_STMT: freeExpr(list->statements[i].as.print.expression); break;
-        case VAR_DECL_STMT: freeExpr(list->statements[i].as.var.initializer); break;
-        case BLOCK_STMT: freeStmtList(list->statements[i].as.block.list); break;
-        default: break;
+void free_stmt(Stmt stmt){
+    switch(stmt.type)
+    {
+    case EXPR_STMT: free_expr(stmt.as.expr.expression); break;
+    case PRINT_STMT: free_expr(stmt.as.print.expression); break;
+    case VAR_DECL_STMT: free_expr(stmt.as.var.initializer); break;
+    case IF_STMT: {
+        free_expr(stmt.as.if_stmt.cond);
+        free_stmt(*stmt.as.if_stmt.trueBranch);
+        free(stmt.as.if_stmt.trueBranch);
+        free_stmt(*stmt.as.if_stmt.falseBranch);
+        free(stmt.as.if_stmt.falseBranch);
+    } break;
+    case WHILE_STMT: {
+        free_expr(stmt.as.while_stmt.cond);
+        free_stmt(*stmt.as.while_stmt.body);
+        free(stmt.as.while_stmt.body);
+    } break;
+    case BLOCK_STMT: {
+        for (size_t i = 0; i < stmt.as.block.list->index; i++){
+            free_stmt(stmt.as.block.list->statements[i]);
         }
+        free(stmt.as.block.list->statements);
+        stmt.as.block.list->statements = NULL;
+        free(stmt.as.block.list);
+        stmt.as.block.list = NULL;
+    } break;
+    default: break;
     }
-    free(list);
-    list = NULL;
 }
 
 #pragma endregion List_utils
@@ -122,134 +144,166 @@ void freeStmtList(StmtList* list){
 #pragma region Constructors
 
 // expression constructors
-static Expr* newExpr(enum ExprType type){
+static Expr* new_expr(ExprType type){
     Expr* e = malloc(sizeof(*e));
     e->type = type;
     return e;
 }
 
-static Expr* binaryExpr(Token* op, Expr* left, Expr* right){
-    Expr* e = newExpr(BINARY);
+static Expr* binary_expr(Token* op, Expr* left, Expr* right){
+    Expr* e = new_expr(BINARY);
     e->as.binary.left = left;
     e->as.binary.right = right;
     e->as.binary.op = op;
     return e;
 }
 
-static Expr* ternaryExpr(Expr* cond, Expr* true_branch, Expr* false_branch){
-    Expr* e = newExpr(TERNARY);
+static Expr* ternary_expr(Expr* cond, Expr* true_branch, Expr* false_branch){
+    Expr* e = new_expr(TERNARY);
     e->as.ternary.cond = cond;
     e->as.ternary.trueBranch = true_branch;
     e->as.ternary.falseBranch = false_branch;
     return e;
 }
 
-static Expr* unaryExpr(Token* op, Expr* right){
-    Expr* e = newExpr(UNARY);
+static Expr* unary_expr(Token* op, Expr* right){
+    Expr* e = new_expr(UNARY);
     e->as.unary.right = right;
     e->as.unary.op = op;
     return e;
 }
 
-static Expr* literalExpr(enum LiteralType valueType, void* value){
-    Expr* e = newExpr(LITERAL);
-    e->as.literal.type = valueType;
-    e->as.literal.value = value;
+static Expr* literal_expr(ValueType type){
+    Expr* e = new_expr(LITERAL);
+    e->as.literal.type = type;
     return e;
 }
 
-static Expr* groupExpr(Expr* expression){
-    Expr* e = newExpr(GROUPING);
+static Expr* group_expr(Expr* expression){
+    Expr* e = new_expr(GROUPING);
     e->as.group.expression = expression;
     return e;
 }
 
-static Expr* varExpr(Token* name){
-    Expr* e = newExpr(VAREXPR);
+static Expr* var_expr(Token* name){
+    Expr* e = new_expr(VAREXPR);
     e->as.var.name = name;
     return e;
 }
 
-static Expr* assignExpr(Token* name, Expr* value){
-    Expr* e = newExpr(ASSIGN);
+static Expr* assign_expr(Token* name, Expr* value){
+    Expr* e = new_expr(ASSIGN);
     e->as.assign.name = name;
     e->as.assign.value = value;
     return e;
 }
 
 // statement constructors
-static Stmt* newStmt(enum StmtType type){
-    Stmt* stmt = malloc(sizeof(Stmt));
-    stmt->type = type;
-    return stmt;
+// static Stmt* newStmt(enum StmtType type){
+//     Stmt* stmt = malloc(sizeof(Stmt));
+//     stmt->type = type;
+//     return stmt;
+// }
+
+static Stmt exprStmt(Expr* expr){
+    return (Stmt){
+        .type = EXPR_STMT,
+        .as.expr.expression = expr
+    };
 }
 
-static Stmt* exprStmt(Expr* expr){
-    Stmt* stmt = newStmt(EXPR_STMT);
-    stmt->as.expr.expression = expr;
-    return stmt;
+static Stmt printStmt(Expr* expr){
+    return (Stmt){
+        .type = PRINT_STMT,
+        .as.print.expression = expr
+    };
 }
 
-static Stmt* printStmt(Expr* expr){
-    Stmt* stmt = newStmt(PRINT_STMT);
-    stmt->as.print.expression = expr;
-    return stmt;
+static Stmt declStmt(Token* name, Expr* initializer){
+    return (Stmt){
+        .type = VAR_DECL_STMT,
+        .as.var.name = name,
+        .as.var.initializer = initializer,
+    };
 }
 
-static Stmt* declStmt(Token* name, Expr* initializer){
-    Stmt* stmt = newStmt(VAR_DECL_STMT);
-    stmt->as.var.name = name;
-    stmt->as.var.initializer = initializer;
-    return stmt;
+static Stmt blockStmt(StmtList* list){
+    return (Stmt){
+        .type = BLOCK_STMT,
+        .as.block.list = list
+    };
 }
 
-static Stmt* blockStmt(StmtList* list){
-    Stmt* stmt = newStmt(BLOCK_STMT);
-    stmt->as.block.list = list;
-    return stmt;
+static Stmt ifStmt(Expr* cond, Stmt* trueBranch, Stmt* falseBranch){
+    return (Stmt){
+        .type = IF_STMT,
+        .as.if_stmt.cond = cond,
+        .as.if_stmt.trueBranch = trueBranch,
+        .as.if_stmt.falseBranch = falseBranch
+    };
 }
 
-static Stmt* ifStmt(Expr* cond, Stmt* trueBranch, Stmt* falseBranch){
-    Stmt* stmt = newStmt(IF_STMT);
-    stmt->as.if_stmt.cond = cond;
-    stmt->as.if_stmt.trueBranch = trueBranch;
-    stmt->as.if_stmt.falseBranch = falseBranch;
-    return stmt;
-}
-
-static Stmt* whileStmt(Expr* cond, Stmt* body){
-    Stmt* stmt = newStmt(WHILE_STMT);
-    stmt->as.while_stmt.cond = cond;
-    stmt->as.while_stmt.body = body;
-    return stmt;
+static Stmt whileStmt(Expr* cond, Stmt* body){
+    return (Stmt){
+        .type = WHILE_STMT,
+        .as.while_stmt.cond = cond,
+        .as.while_stmt.body = body
+    };
 }
 
 #pragma endregion Constructors
 
 #pragma region Parse_utils
 // utils
-static Token* peek(){
-    return &tokensList->tokens[current];
+static const char* token_strings[] = {   
+    "(", ")", "{", "}", ",", ".", "-", "+", ";", "/", "*", "?", ":",
+    "!", "!=", "=", "==", ">", ">=", "<", "<=", "IDENTIFIER", "STRING", "NUMBER",
+    "and", "or", "print", "if", "else", "true", "false", "nil", "for", "while", "fun", 
+    "return", "class", "super", "this", "var", "EOF"
+};
+
+static Token* peek(Parser* parser){
+    return &parser->tokenizer->tokens[parser->current_token];
 }
 
-static bool check(enum TokenTypes type){
-    if (peek()->type == ENDFILE) return false;
-    return peek()->type == type;
+static bool check(Parser* parser, TokenType type){
+    if (peek(parser)->type == ENDFILE) return false;
+    return peek(parser)->type == type;
 }
 
-static Token* previous(){
-    return &tokensList->tokens[current-1];
+static Token* previous(Parser* parser){
+    return &parser->tokenizer->tokens[parser->current_token-1];
 }
 
-static Token* advance(){
-    if (peek()->type != ENDFILE) current++;
-    return previous();
+static Token* advance(Parser* parser){
+    if (peek(parser)->type != ENDFILE) parser->current_token++;
+    return previous(parser);
 }
 
-static bool match(enum TokenTypes* types, int size){
+static int get_column(Parser* parser){
+    int col;
+    size_t cur = peek(parser)->start;
+    for (col = 0; cur-col > 0 && parser->tokenizer->source[cur-col] != '\n'; col++);
+    return col;
+}
+
+static void synchronize(Parser* parser){
+    while(!check(parser, SEMICOLON)) advance(parser);
+}
+
+static void expect(Parser* parser, TokenType type){
+    if (!check(parser, type)){
+        plerror(peek(parser)->line, get_column(parser), PARSE_ERR, "Expected '%s', but got '%s'", 
+            token_strings[type], token_strings[peek(parser)->type]);
+        // synchronize(parser);
+    }
+    advance(parser);
+}
+
+static bool match(Parser* parser, TokenType* types, int size){
     for (int i = 0; i < size; i++){
-        if (check(types[i])){
-            advance();
+        if (check(parser, types[i])){
+            advance(parser);
             return true;
         }
     }
@@ -260,316 +314,287 @@ static bool match(enum TokenTypes* types, int size){
 
 #pragma region Grammar
 // parser
-
-// void synchronize(){
-//     advance();
-
-// }
-
-StmtList* parse(TokenList* list){
-    tokensList = list;
-    current = 0;
-    StmtList* statements = (StmtList*)malloc(sizeof(StmtList));
-    initStmtList(statements);
-    while(peek()->type != ENDFILE){
-        addStatement(statements, *declaration());
+void free_parser(Parser* parser){
+    for (size_t i = 0; i < parser->stmt_list->index; i++){
+        free_stmt(parser->stmt_list->statements[i]);
     }
-    return statements;
+    free(parser->stmt_list->statements);
+    parser->stmt_list->statements = NULL;
+    free(parser->stmt_list);
+    parser->stmt_list = NULL;
+    free(parser);
 }
 
-static Stmt* declaration(){
-    if (check(VAR)){
-        advance();
-        return varDecl();
+Parser* create_parser(Tokenizer* tokenizer){
+    Parser* p = (Parser*)malloc(sizeof(Parser));
+    if (p == NULL){
+        plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for parser object");
+        exit(1);
     }
-    return statement();
+    p->stmt_list = init_stmt_list();
+    p->current_token = 0;
+    p->tokenizer = tokenizer;
+    return p;
 }
 
-static Stmt* varDecl(){
-    if (!check(IDENTIFIER)){
-        plerror(peek()->line, PARSE_ERROR, "expected an identifier after 'var' keyword, but got %s", peek()->lexeme);
+void parse(Parser* parser){
+    while(peek(parser)->type != ENDFILE){
+        add_statement(parser->stmt_list, declaration(parser));
     }
-    advance();
-    Token* id = previous();
+    // add_statement(parser->stmt_list, (Stmt){.type=NULL_STMT});
+}
+
+static Stmt declaration(Parser* parser){
+    if (check(parser, VAR)){
+        advance(parser);
+        return var_decl(parser);
+    }
+    return statement(parser);
+}
+
+static Stmt var_decl(Parser* parser){
+    expect(parser, IDENTIFIER);
+    Token* id = previous(parser);
     Expr* initializer = NULL;
-    if (check(EQUAL)){
-        advance();
-        initializer = expression();
+    if (check(parser, EQUAL)){
+        advance(parser);
+        initializer = expression(parser);
     }
-    if (!check(SEMICOLON)){
-        plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of variable declaration, but got %s", peek()->lexeme);
-    }
-    advance();
+    expect(parser, SEMICOLON);
     return declStmt(id, initializer);
 }
 
-static Stmt* statement(){
-    if (check(PRINT)){
-        advance();
-        Expr* expr = expression();
-        if (!check(SEMICOLON)){
-            plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of print statement, but got %s", peek()->lexeme);
-        }
-        advance();
+static Stmt statement(Parser* parser){
+    if (check(parser, PRINT)){
+        advance(parser);
+        Expr* expr = expression(parser);
+        expect(parser, SEMICOLON);
         return printStmt(expr);
-    } else if (check(IF)){
-        advance();
-        if (!check(LEFT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'if' keyword, but got %s", peek()->lexeme);
-        }
-        advance();
-        Expr* cond = expression();
-        if (!check(RIGHT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected ')' after condition of if-statement, but got %s", peek()->lexeme);
-        }
-        advance();
-        Stmt* trueBranch = statement();
+
+    } else if (check(parser, IF)){
+        advance(parser);
+        expect(parser, LEFT_PAREN);
+        Expr* cond = expression(parser);
+        expect(parser, RIGHT_PAREN);
+        Stmt* trueBranch = (Stmt*)malloc(sizeof(Stmt));
         Stmt* falseBranch = NULL;
-        if (check(ELSE)){
-            advance();
-            falseBranch = statement();
+        
+        *trueBranch = statement(parser);
+        if (check(parser, ELSE)){
+            advance(parser);
+            falseBranch = (Stmt*)malloc(sizeof(Stmt));
+            *falseBranch = statement(parser);
         }
         return ifStmt(cond, trueBranch, falseBranch);
-    } else if (check(WHILE)){
-        advance();
-        if (!check(LEFT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'while' keyword, but got %s", peek()->lexeme);
-        }
-        advance();
-        Expr* cond = expression();
-        if (!check(RIGHT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected ')' after condition of while-statement, but got %s", peek()->lexeme);
-        }
-        advance();
-        Stmt* body = statement();
+
+    } else if (check(parser, WHILE)){
+        advance(parser);
+        expect(parser, LEFT_PAREN);
+        Expr* cond = expression(parser);
+        expect(parser, RIGHT_PAREN);
+        Stmt* body = (Stmt*)malloc(sizeof(Stmt));
+        *body = statement(parser);
         return whileStmt(cond, body);
-    } else if (check(FOR)){
-        advance();
-        if (!check(LEFT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected '(' after 'for' keyword, but got %s", peek()->lexeme);
-        }
-        advance();
-        Stmt* decl = NULL;
-        if (check(VAR)){
-            advance();
-            decl = varDecl();
-        } else if (check(SEMICOLON)){
-            advance();
+
+    } else if (check(parser, FOR)){
+        advance(parser);
+        expect(parser, LEFT_PAREN);
+        Stmt decl = {.type=NULL_STMT};
+        if (check(parser, VAR)){
+            advance(parser);
+            decl = var_decl(parser);
+        } else if (check(parser, SEMICOLON)){
+            advance(parser);
         } else {
-            decl = exprStmt(expression());
-            if (!check(SEMICOLON)){
-                plerror(peek()->line, PARSE_ERROR, "expected ';' after expression in for-statement, but got %s", peek()->lexeme);
-            }
-            advance();
+            decl = exprStmt(expression(parser));
+            expect(parser, SEMICOLON);
         }
         Expr* cond = NULL;
-        if (check(SEMICOLON)){ // for (x; x < 10; )
-            advance();
+        if (check(parser, SEMICOLON)){
+            advance(parser);
         } else {
-            cond = expression();
-            if (!check(SEMICOLON)){
-                plerror(peek()->line, PARSE_ERROR, "expected ';' after expression in for-statement, but got %s", peek()->lexeme);
-            }
-            advance();
+            cond = expression(parser);
+            expect(parser, SEMICOLON);
         }
 
         Expr* incr = NULL;
-        if (check(RIGHT_PAREN)){
-            advance();
-            
+        if (check(parser, RIGHT_PAREN)){
+            advance(parser);
         } else {
-            incr = expression();
-            if (!check(RIGHT_PAREN)){
-                plerror(peek()->line, PARSE_ERROR, "expected ')' after for-statement header, but got %s", peek()->lexeme);
-            }
-            advance();
+            incr = expression(parser);
+            expect(parser, RIGHT_PAREN);
         }
 
-        Stmt* loop_body = statement();
-        StmtList* body = (StmtList*)malloc(sizeof(StmtList));
-        initStmtList(body);
-        addStatement(body, *loop_body);
-        free(loop_body);
+        Stmt loop_body = statement(parser);
+        StmtList* body = init_stmt_list();
+        add_statement(body, loop_body);
 
-        
-        if (incr != NULL) {
-            Stmt* incrStmt = exprStmt(incr);
-            addStatement(body, *incrStmt);
-            free(incrStmt);
-        }
-        StmtList* list = (StmtList*)malloc(sizeof(StmtList)); 
-        initStmtList(list);
-        if (decl != NULL) {
-            addStatement(list, *decl);
-            free(decl);
-        }
+        if (incr != NULL)
+            add_statement(body, exprStmt(incr));
+        StmtList* list = init_stmt_list();
+        if (decl.type != NULL_STMT) 
+            add_statement(list, decl);
 
-        if (cond == NULL) cond = literalExpr(BOOL_T, (void*)true);
-        
-        Stmt* loop = whileStmt(cond, blockStmt(body));
-        addStatement(list, *loop);
-        free(loop);
+        if (cond == NULL) {
+            cond = literal_expr(BOOL_T);
+            cond->as.literal.as.boolean = true;
+        }
+        Stmt* body_block = (Stmt*)malloc(sizeof(Stmt));
+        *body_block = blockStmt(body);
+        Stmt loop = whileStmt(cond, body_block);
+        add_statement(list, loop);
         return blockStmt(list);
 
-    } else if (check(LEFT_BRACE)) {
-        advance();
-        StmtList* list = (StmtList*)malloc(sizeof(StmtList));
-        initStmtList(list);
-        while (!check(RIGHT_BRACE) && peek()->type != ENDFILE){
-            addStatement(list, *declaration());
+    } else if (check(parser, LEFT_BRACE)) {
+        advance(parser);
+        StmtList* list = init_stmt_list();
+        while (!check(parser, RIGHT_BRACE) && peek(parser)->type != ENDFILE){
+            add_statement(list, declaration(parser));
         }
-        if (!check(RIGHT_BRACE)){
-            plerror(peek()->line, PARSE_ERROR, "expected '}' at the end of block statement, but got %s", peek()->lexeme);
-        }
-        advance();
+        expect(parser, RIGHT_BRACE);
         return blockStmt(list);
+
     } else {
-        Expr* expr = expression();
-        if (!check(SEMICOLON)){
-            plerror(peek()->line, PARSE_ERROR, "expected ';' at the end of expression statement, but got %s", peek()->lexeme);
-        }
-        advance();
+        Expr* expr = expression(parser);
+        expect(parser, SEMICOLON);
         return exprStmt(expr);
     }
 }
 
-static Expr* expression(){
-    Expr* expr = or();
-    if (check(EQUAL)){
-        Token* equal = previous();
-        advance();
-        Expr* value = expression();
+static Expr* expression(Parser* parser){
+    Expr* expr = or(parser);
+    if (check(parser, EQUAL)){
+        Token* equal = previous(parser);
+        advance(parser);
+        Expr* value = expression(parser);
         if (expr->type == VAREXPR){
             Token* name = expr->as.var.name;
-            return assignExpr(name, value);
+            return assign_expr(name, value);
         }
-        plerror(equal->line, PARSE_ERROR, "Invalid assignment target");
+        plerror(equal->line, get_column(parser), PARSE_ERR, "Invalid assignment target");
     } else {
-        while(check(QMARK)){
-            advance();
-            Expr* tbranch = expression();
-            if (!check(COLON)){
-                plerror(peek()->line, PARSE_ERROR, "expected ':' but got '%s'", peek()->lexeme);
-            }
-            advance();
-            Expr* fbranch = expression();
-            expr = ternaryExpr(expr, tbranch, fbranch);
+        while(check(parser, QMARK)){
+            advance(parser);
+            Expr* tbranch = expression(parser);
+            expect(parser, COLON);
+            Expr* fbranch = expression(parser);
+            expr = ternary_expr(expr, tbranch, fbranch);
         }
     } 
     return expr;
 }
 
-static Expr* or(){
-    Expr* left = and();
-    enum TokenTypes types[1] = {OR};
-    while(match(types, 1)){
-        Token* op = previous();
-        Expr* right = and();
-        left = binaryExpr(op, left, right);
+static Expr* or(Parser* parser){
+    Expr* left = and(parser);
+    TokenType types[1] = {OR};
+    while(match(parser, types, 1)){
+        Token* op = previous(parser);
+        Expr* right = and(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* and(){
-    Expr* left = equality();
-    enum TokenTypes types[1] = {AND};
-    while(match(types, 1)){
-        Token* op = previous();
-        Expr* right = equality();
-        left = binaryExpr(op, left, right);
+static Expr* and(Parser* parser){
+    Expr* left = equality(parser);
+    TokenType types[1] = {AND};
+    while(match(parser, types, 1)){
+        Token* op = previous(parser);
+        Expr* right = equality(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* equality(){
+static Expr* equality(Parser* parser){
 
-    Expr* left = comparison();
-    enum TokenTypes types[2] = {BANG_EQUAL, EQUAL_EQUAL};
-    while(match(types, 2)){
-        Token* op = previous();
-        Expr* right = comparison();
-        left = binaryExpr(op, left, right);
+    Expr* left = comparison(parser);
+    TokenType types[2] = {BANG_EQUAL, EQUAL_EQUAL};
+    while(match(parser, types, 2)){
+        Token* op = previous(parser);
+        Expr* right = comparison(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* comparison(){
+static Expr* comparison(Parser* parser){
 
-    Expr* left = term();
-    enum TokenTypes types[4] = {GREATER, GREATER_EQUAL, LESS, LESS_EQUAL};
-    while(match(types, 4)){
-        Token* op = previous();
-        Expr* right = term();
-        left = binaryExpr(op, left, right);
+    Expr* left = term(parser);
+    TokenType types[4] = {GREATER, GREATER_EQUAL, LESS, LESS_EQUAL};
+    while(match(parser, types, 4)){
+        Token* op = previous(parser);
+        Expr* right = term(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* term(){
+static Expr* term(Parser* parser){
 
-    Expr* left = factor();
-    enum TokenTypes types[2] = {PLUS, MINUS};
-    while(match(types, 2)){
-        Token* op = previous();
-        Expr* right = factor();
-        left = binaryExpr(op, left, right);
+    Expr* left = factor(parser);
+    TokenType types[2] = {PLUS, MINUS};
+    while(match(parser, types, 2)){
+        Token* op = previous(parser);
+        Expr* right = factor(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* factor(){
+static Expr* factor(Parser* parser){
 
-    Expr* left = unary();
-    enum TokenTypes types[2] = {SLASH, STAR};
-    while(match(types, 2)){
-        Token* op = previous();
-        Expr* right = unary();
-        left = binaryExpr(op, left, right);
+    Expr* left = unary(parser);
+    TokenType types[2] = {SLASH, STAR};
+    while(match(parser, types, 2)){
+        Token* op = previous(parser);
+        Expr* right = unary(parser);
+        left = binary_expr(op, left, right);
     }
     return left;
 }
 
-static Expr* unary(){
+static Expr* unary(Parser* parser){
     Expr* result;
-    enum TokenTypes types[2] = {BANG, MINUS};
-    if (match(types, 2)){
-        Token* op = previous();
-        Expr* right = unary();
-        result = unaryExpr(op, right);
+    TokenType types[2] = {BANG, MINUS};
+    if (match(parser, types, 2)){
+        Token* op = previous(parser);
+        Expr* right = unary(parser);
+        result = unary_expr(op, right);
     } else {
-        result = primary();
+        result = primary(parser);
     }
     return result;
 }
 
-static Expr* primary(){
+static Expr* primary(Parser* parser){
     Expr* result;
-    if (check(NUMBER) || check(STRING)){
-        advance();
-        result = literalExpr(previous()->type == NUMBER ? NUM_T : STR_T, previous()->literal);
-    } else if (check(IDENTIFIER)){
-        advance();
-        result = varExpr(previous());
-    } else if (check(FALSE)){
-        advance();
-        result = literalExpr(BOOL_T, (void*)false);
-    } else if (check(TRUE)){
-        advance();
-        result = literalExpr(BOOL_T, (void*)true);
-    } else if (check(NIL)){
-        advance();
-        result = literalExpr(NIL_T, (void*)NULL);
-    } else if (check(LEFT_PAREN)){
-        advance();
-        Expr* e = expression();
-        if (!check(RIGHT_PAREN)){
-            plerror(peek()->line, PARSE_ERROR, "expected ')' but got %s", peek()->lexeme);
-        }
-        result = groupExpr(e);
-        advance();
+    if (check(parser, NUMBER)){
+        result = literal_expr(NUM_T);
+        result->as.literal.as.number = peek(parser)->lit.number;
+    } else if (check(parser, STRING)){
+        result = literal_expr(STR_T);
+        result->as.literal.as.string = peek(parser)->lit.string;
+    } else if (check(parser, IDENTIFIER)){
+        result = var_expr(peek(parser));
+    } else if (check(parser, FALSE)){
+        result = literal_expr(BOOL_T);
+        result->as.literal.as.boolean = false;
+    } else if (check(parser, TRUE)){
+        result = literal_expr(BOOL_T);
+        result->as.literal.as.boolean = false;
+    } else if (check(parser, NIL)){
+        result = literal_expr(NIL_T);
+    } else if (check(parser, LEFT_PAREN)){
+        advance(parser);
+        Expr* e = expression(parser);
+        expect(parser, RIGHT_PAREN);
+        result = group_expr(e);
     } else {
-        plerror(peek()->line, PARSE_ERROR, "unhandled value, got \"%s\"", peek()->lexeme);
+        plerror(peek(parser)->line, get_column(parser), PARSE_ERR, "unhandled value, got '%s'", token_strings[peek(parser)->type]);
     }
+
+    advance(parser);
     return result;
 }
 #pragma endregion Grammar
@@ -577,100 +602,118 @@ static Expr* primary(){
 #pragma region AST
 // AST methods
 
-void expressionPrinter(Expr* expr){
+void print_lexeme(Parser* parser, Token* token){
+    for (size_t i = 0; i < token->count - token->start; i++){
+        printf("%c", parser->tokenizer->source[token->start+i]);
+    }
+}
+
+void expression_printer(Parser* parser, Expr* expr){
     
     switch (expr->type)
     {
     case BINARY: {
-        printf("( %s ", expr->as.binary.op->lexeme);
-        expressionPrinter(expr->as.binary.left);
-        expressionPrinter(expr->as.binary.right);
+        printf("( %s ", token_strings[expr->as.binary.op->type]);
+        expression_printer(parser, expr->as.binary.left);
+        expression_printer(parser, expr->as.binary.right);
         printf(" )");
     } break;
     case TERNARY: {
         printf("( ternary ");
-        expressionPrinter(expr->as.ternary.cond);
+        expression_printer(parser, expr->as.ternary.cond);
         printf(" ? ");
-        expressionPrinter(expr->as.ternary.trueBranch);
+        expression_printer(parser, expr->as.ternary.trueBranch);
         printf(" : ");
-        expressionPrinter(expr->as.ternary.falseBranch);
+        expression_printer(parser, expr->as.ternary.falseBranch);
         printf(" )");
     } break;
     case UNARY: {
-        printf("( %s ", expr->as.unary.op->lexeme);
-        expressionPrinter(expr->as.unary.right);
+        printf("( %s ", token_strings[expr->as.unary.op->type]);
+        expression_printer(parser, expr->as.unary.right);
         printf(" )");
     } break;
     case LITERAL: {
         switch (expr->as.literal.type){
-            case NUM_T: printf(" %f ", *(double*)expr->as.literal.value); break;
-            case BOOL_T: printf(expr->as.literal.value ? " true " : " false "); break;
-            case NIL_T: printf(" nil "); break;
-            case STR_T: printf(" %s ", (char*)expr->as.literal.value); break;
+            case NUM_T: printf(" %f", expr->as.literal.as.number); break;
+            case BOOL_T: printf(expr->as.literal.as.boolean ? " true" : " false"); break;
+            case NIL_T: printf(" nil"); break;
+            case STR_T: printf(" %s", expr->as.literal.as.string); break;
             default: break;
         }
     } break;
     case GROUPING: {
         printf("( group ");
-        expressionPrinter(expr->as.group.expression);
+        expression_printer(parser, expr->as.group.expression);
         printf(" )");
     } break;
-    case VAREXPR: printf("( id %s )", expr->as.var.name->lexeme); break;
+    case VAREXPR: {
+        printf("( id ");
+        print_lexeme(parser, expr->as.var.name);
+        printf(" )"); 
+    } break;
     case ASSIGN: {
-        printf("( assign %s ", expr->as.assign.name->lexeme);
-        expressionPrinter(expr->as.assign.value);
+        printf("( assign ");
+        print_lexeme(parser, expr->as.assign.name);
+        printf(" ");
+        expression_printer(parser, expr->as.assign.value);
         printf(" )");
     } break;
     default: break;
     }
 }
 
-void statementPrinter(Stmt* stmt){
-    switch(stmt->type)
+void statement_printer(Parser* parser, Stmt stmt){
+    switch(stmt.type)
     {
     case EXPR_STMT: {
         printf("( expr ");
-        expressionPrinter(stmt->as.expr.expression);
-        printf(" )");
+        expression_printer(parser, stmt.as.expr.expression);
+        printf(" )\n");
     } break;
     case PRINT_STMT: {
         printf("( print ");
-        expressionPrinter(stmt->as.expr.expression);
-        printf(" )");
+        expression_printer(parser, stmt.as.expr.expression);
+        printf(" )\n");
     } break;
     case VAR_DECL_STMT: {
-        printf("( var decl %s ", stmt->as.var.name->lexeme);
-        if (stmt->as.var.initializer != NULL)
-            expressionPrinter(stmt->as.var.initializer);
-        printf(" )");
+        printf("( var decl ");
+        print_lexeme(parser, stmt.as.var.name);
+        if (stmt.as.var.initializer != NULL)
+            expression_printer(parser, stmt.as.var.initializer);
+        printf(" )\n");
     } break;
     case IF_STMT: {
         printf("( if ");
-        expressionPrinter(stmt->as.if_stmt.cond);
+        expression_printer(parser, stmt.as.if_stmt.cond);
         printf(" then ");
-        statementPrinter(stmt->as.if_stmt.trueBranch);
-        if (stmt->as.if_stmt.falseBranch != NULL){
+        statement_printer(parser, *stmt.as.if_stmt.trueBranch);
+        if (stmt.as.if_stmt.falseBranch != NULL){
             printf(" else ");
-            statementPrinter(stmt->as.if_stmt.falseBranch);
+            statement_printer(parser, *stmt.as.if_stmt.falseBranch);
         }
-        printf(" )");
+        printf(" )\n");
     } break;
     case WHILE_STMT: {
         printf("( while ");
-        expressionPrinter(stmt->as.while_stmt.cond);
+        expression_printer(parser, stmt.as.while_stmt.cond);
         printf(" then ");
-        statementPrinter(stmt->as.while_stmt.body);
-        printf(" )");
+        statement_printer(parser, *stmt.as.while_stmt.body);
+        printf(" )\n");
     } break;
     case BLOCK_STMT: {
-        printf("( block [ ");
-        for (size_t i = 0; i < stmt->as.block.list->index; i++){
-            printf("\n");
-            statementPrinter(&stmt->as.block.list->statements[i]);
+        printf("( block [ \n");
+        for (size_t i = 0; i < stmt.as.block.list->index; i++){
+            statement_printer(parser, stmt.as.block.list->statements[i]);
         }
-        printf("\n] )");
+        printf(" ] )\n");
     } break;
     default: break;
+    }
+}
+
+void print_statements(Parser* parser){
+    for (size_t i = 0; i < parser->stmt_list->index; i++){
+        statement_printer(parser, parser->stmt_list->statements[i]);
     }
 }
 
