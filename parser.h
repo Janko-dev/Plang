@@ -143,7 +143,6 @@ typedef struct {
     
     Tokenizer* tokenizer;
     size_t current_token;
-
 } Parser;
 
 Parser* create_parser(Tokenizer* tokenizer);
@@ -151,5 +150,7 @@ void free_parser(Parser* parser);
 
 void parse(Parser* parser);
 void print_statements(Parser* parser);
+
+int get_column(Token* tok, char* source);
 
 #endif //_PARSER_H

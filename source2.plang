@@ -1,7 +1,6 @@
 var x = "hello";
 var i = 0;
 
-for (; i < 10; ){
-    print x;
-    i = i+1
-}
+while (i < 5){
+    print i = i + 1;
+}  

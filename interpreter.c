@@ -2,6 +2,13 @@
 #define UTILS_IMPLEMENT
 #include "utils.h"
 
+static char* source;
+
+static LiteralExpr nil_obj();
+static LiteralExpr num_obj(double num);
+static LiteralExpr string_obj(char* string);
+static LiteralExpr bool_obj(bool b);
+
 #pragma region Environment
 static unsigned int hash(char* s){
     unsigned int hashval;
@@ -9,26 +16,26 @@ static unsigned int hash(char* s){
         hashval = *s + 31 * hashval;
     }
 
-    return hashval % HASH_SIZE;
+    return hashval % ENV_SIZE;
 }
 
-Env* createEnv(Env* enclosing){
+Env* create_env(Env* enclosing){
     Env* e = (Env*)malloc(sizeof(Env));
     if (e == NULL){
-        plerror(-1, RUNTIME_ERROR, "Malloc failed at environment initialisation");
-        return NULL;
+        plerror(-1, -1, MEMORY_ERR, "Malloc failed at environment initialisation");
+        exit(1);
     }
     e->map = (EnvMap**)malloc(sizeof(EnvMap*) * ENV_SIZE);
     if (e == NULL){
-        plerror(-1, RUNTIME_ERROR, "Malloc failed at environment initialisation");
-        return NULL;
+        plerror(-1, -1, MEMORY_ERR, "Malloc failed at environment initialisation");
+        exit(1);
     }
     memset(e->map, 0, sizeof(EnvMap*) * ENV_SIZE);
     e->enclosing = enclosing;
     return e;
 }
 
-void freeEnvMap(EnvMap** env){
+void free_env_map(EnvMap** env){
     for (size_t i = 0; i < ENV_SIZE; i++){
         EnvMap* e = env[i];
         EnvMap* tmp;
@@ -36,17 +43,15 @@ void freeEnvMap(EnvMap** env){
             tmp = e;
             e = e->next;
             free(tmp->key);
-            tmp->key = NULL;
             free(tmp);
-            tmp = NULL;
         }
     }
     free(env);
     env = NULL;
 }
 
-void freeEnv(Env* env){
-    freeEnvMap(env->map);
+void free_env(Env* env){
+    free_env_map(env->map);
     env->map = NULL;
     free(env);
     env = NULL;
@@ -62,47 +67,63 @@ static EnvMap* lookup(EnvMap** env, char* s){
     return NULL;
 }
 
-static char* strdup(char* s){
-    char* p = (char*)malloc(strlen(s) + 1);
-    if (p != NULL) strcpy(p, s);
-    return p;
-}
-
-void define(Env* env, char* key, Obj* value){
+void define(Env* env, char* key, LiteralExpr value){
     EnvMap* e;
-    unsigned int hashval;
     if ((e = lookup(env->map, key)) == NULL){
         e = (EnvMap*)malloc(sizeof(*e));
-        if (e == NULL || (e->key = strdup(key)) == NULL) return;
-        hashval = hash(key);
+        if (e == NULL) {
+            plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for Environment node: %s", key);
+            exit(1);
+        }
+        e->key = malloc(sizeof(char) * strlen(key) + 1);
+        if (e->key == NULL) {
+            plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for Environment node key");
+            exit(1);
+        } 
+        strcpy(e->key, key);
+        unsigned int hashval = hash(key);
         e->next = env->map[hashval];
         env->map[hashval] = e;
     }
     e->value = value;
 }
 
-void assign(Env* env, Token* name, Obj* value){
+static char* get_lexeme(Token* tok){
+    size_t n = tok->count - tok->start;
+    char* buf = (char*)malloc(n * sizeof(char) + 1);
+    for (size_t i = 0; i < n; i++) buf[i] = source[tok->start+i];
+    buf[n] = '\0';
+    return buf; 
+}
+
+void assign(Env* env, Token* name, LiteralExpr value){
     EnvMap* e;
-    if ((e = lookup(env->map, name->lexeme)) == NULL){
+    char* lexeme = get_lexeme(name);
+    if ((e = lookup(env->map, lexeme)) == NULL){
         if (env->enclosing != NULL){
+            free(lexeme);
             assign(env->enclosing, name, value);
             return;
         }
-        plerror(name->line, RUNTIME_ERROR, "Undefined variable '%s'", name->lexeme);
+        plerror(name->line, get_column(name, source), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
+        free(lexeme);
         return;
     }
-
     e->value = value;
+    free(lexeme);
 }
 
-Obj* get(Env* env, Token* name){
+LiteralExpr get(Env* env, Token* name){
     EnvMap* e;
-    if ((e = lookup(env->map, name->lexeme)) == NULL){
+    char* lexeme = get_lexeme(name);
+    if ((e = lookup(env->map, lexeme)) == NULL){
         if (env->enclosing != NULL){
+            free(lexeme);
             return get(env->enclosing, name);
         }
-        plerror(name->line, RUNTIME_ERROR, "Undefined variable '%s'", name->lexeme);
-        return newObj(NIL_T);
+        plerror(name->line, get_column(name, source), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
+        free(lexeme);
+        return nil_obj();
     }
     return e->value;
 }
@@ -112,153 +133,152 @@ Obj* get(Env* env, Token* name){
 
 static char* valueTypes[] = { "nil", "number", "string", "boolean" };
 
-Obj* newObj(enum LiteralType type){
-    Obj* obj = malloc(sizeof(Obj));
-    if (obj == NULL) {
-        plerror(-1, RUNTIME_ERROR, "Malloc failed at object constructor"); 
-        return NULL;
-    }
-    obj->type = type;
-    return obj;
+LiteralExpr nil_obj(){
+    return (LiteralExpr){
+        .type = NIL_T
+    };
 }
 
-Obj* newNum(double num){
-    Obj* obj = newObj(NUM_T);
-    obj->as.num = num;
-    return obj;
+LiteralExpr num_obj(double num){
+    return (LiteralExpr){
+        .type = NUM_T,
+        .as.number = num
+    };
 }
 
-Obj* newString(char* string){
-    Obj* obj = newObj(STR_T);
-    obj->as.string = string;
-    return obj;
+LiteralExpr string_obj(char* string){
+    return (LiteralExpr){
+        .type = STR_T,
+        .as.string = string
+    };
 }
 
-Obj* newBool(bool b){
-    Obj* obj = newObj(BOOL_T);
-    obj->as.boolean = b;
-    return obj;
+LiteralExpr bool_obj(bool b){
+    return (LiteralExpr){
+        .type = BOOL_T,
+        .as.boolean = b
+    };
 }
 
-int isTruthy(Obj* obj){
-    if (obj->type == NIL_T) return false;
-    if (obj->type == BOOL_T) return obj->as.boolean;
+int isTruthy(LiteralExpr obj){
+    if (obj.type == NIL_T) return false;
+    if (obj.type == BOOL_T) return obj.as.boolean;
     return true;
 }
 
-Obj* evaluate(Expr* expr, Env* env){
+LiteralExpr evaluate(Expr* expr, Env* env){
     switch (expr->type)
     {
     case BINARY: {
         if (expr->as.binary.op->type == AND){
-            Obj* left = evaluate(expr->as.binary.left, env);
-            if (!isTruthy(left)) return newBool(false);
+            LiteralExpr left = evaluate(expr->as.binary.left, env);
+            if (!isTruthy(left)) return bool_obj(false);
             return evaluate(expr->as.binary.right, env);
         } else if (expr->as.binary.op->type == OR){
-            Obj* left = evaluate(expr->as.binary.left, env);
-            if (isTruthy(left)) return newBool(true);
+            LiteralExpr left = evaluate(expr->as.binary.left, env);
+            if (isTruthy(left)) return bool_obj(true);
             return evaluate(expr->as.binary.right, env);
         }
         
-        Obj* left = evaluate(expr->as.binary.left, env);
-        Obj* right = evaluate(expr->as.binary.right, env);
+        LiteralExpr left = evaluate(expr->as.binary.left, env);
+        LiteralExpr right = evaluate(expr->as.binary.right, env);
 
         switch (expr->as.binary.op->type)
         {
         case EQUAL_EQUAL: {
-            if (left->type == NIL_T && right->type == NIL_T) return newBool(true);
-            if (left->type == NIL_T) return newBool(false);
-            return newBool(left->as.num == right->as.num);
+            if (left.type == NIL_T && right.type == NIL_T) return bool_obj(true);
+            if (left.type == NIL_T) return bool_obj(false);
+            return bool_obj(left.as.number == right.as.number);
         }
         case BANG_EQUAL: {
-            if (left->type == NIL_T && right->type == NIL_T) return newBool(false);
-            if (left->type == NIL_T) return newBool(true);
-            return newBool(left->as.num != right->as.num);
+            if (left.type == NIL_T && right.type == NIL_T) return bool_obj(false);
+            if (left.type == NIL_T) return bool_obj(true);
+            return bool_obj(left.as.number != right.as.number);
         }
         case GREATER: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newBool(left->as.num > right->as.num);
+            return bool_obj(left.as.number > right.as.number);
         }
         case GREATER_EQUAL: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newBool(left->as.num >= right->as.num);
+            return bool_obj(left.as.number >= right.as.number);
         }
         case LESS: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newBool(left->as.num < right->as.num);
+            return bool_obj(left.as.number < right.as.number);
         }
         case LESS_EQUAL: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newBool(left->as.num <= right->as.num);
+            return bool_obj(left.as.number <= right.as.number);
         }
         case STAR: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newNum(left->as.num * right->as.num);
+            return num_obj(left.as.number * right.as.number);
         }
         case SLASH: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            if (right->as.num == 0) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Division by zero error");
-                return newObj(NIL_T);
+            if (right.as.number == 0) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Division by zero error");
+                return nil_obj();
             }
-            return newNum(left->as.num / right->as.num);
+            return num_obj(left.as.number / right.as.number);
         }
         case MINUS: {
-            if (left->type != NUM_T || right->type != NUM_T) {
-                plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
-                    valueTypes[left->type], valueTypes[right->type]);
-                return newObj(NIL_T);
+            if (left.type != NUM_T || right.type != NUM_T) {
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
+                    valueTypes[left.type], valueTypes[right.type]);
+                return nil_obj();
             }
-            return newNum(left->as.num - right->as.num);
+            return num_obj(left.as.number - right.as.number);
         }
         case PLUS: {
-            if (left->type == NUM_T && right->type == NUM_T){
-                return newNum(left->as.num + right->as.num);
+            if (left.type == NUM_T && right.type == NUM_T){
+                return num_obj(left.as.number + right.as.number);
             }
-            if (left->type == STR_T && right->type == STR_T){
-                size_t len_left = strlen(left->as.string);
-                size_t len_right = strlen(right->as.string);
-                char* res = malloc(len_left + len_right);
-                for (size_t i = 0; i < len_left; i++) res[i] = left->as.string[i];
-                for (size_t i = len_left; i < len_left + len_right; i++) res[i] = right->as.string[i-len_left];
+            if (left.type == STR_T && right.type == STR_T){
+                size_t len_left = strlen(left.as.string);
+                size_t len_right = strlen(right.as.string);
+                char* res = malloc(len_left + len_right + 1);
+                for (size_t i = 0; i < len_left; i++) res[i] = left.as.string[i];
+                for (size_t i = len_left; i < len_left + len_right; i++) res[i] = right.as.string[i-len_left];
                 res[len_left+len_right] = '\0';
-                return newString(res);
+                return string_obj(res);
             }
-            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
-                valueTypes[left->type], valueTypes[right->type]);
-            return newObj(NIL_T);
+            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
+                valueTypes[left.type], valueTypes[right.type]);
+            return nil_obj();
         }
         default:
-            plerror(expr->as.binary.op->line, RUNTIME_ERROR, "Unreachable binary operator");
-            return newObj(NIL_T);
+            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Unreachable binary operator");
+            return nil_obj();
         }
     } break;
     case TERNARY: {
-        Obj* res = evaluate(expr->as.ternary.cond, env);
+        LiteralExpr res = evaluate(expr->as.ternary.cond, env);
         if (isTruthy(res)) {
             return evaluate(expr->as.ternary.trueBranch, env);
         } else {
@@ -266,97 +286,101 @@ Obj* evaluate(Expr* expr, Env* env){
         }
     } break;
     case UNARY: {
-        Obj* right = evaluate(expr->as.unary.right, env);
+        LiteralExpr right = evaluate(expr->as.unary.right, env);
         switch(expr->as.unary.op->type){
             case MINUS: {
-                if (right->type != NUM_T) {
-                    plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right->type]);
-                    return newObj(NIL_T);
+                if (right.type != NUM_T) {
+                    plerror(expr->as.unary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
+                    return nil_obj();
                 }
-                right->as.num = -right->as.num;
+                right.as.number = -right.as.number;
                 return right;
             };
             case BANG: {
-                right->as.boolean = !isTruthy(right);
-                right->type = BOOL_T;
+                right.as.boolean = !isTruthy(right);
+                right.type = BOOL_T;
                 return right;
             }
             default: 
-                plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
-                return newObj(NIL_T);
+                plerror(expr->as.unary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Unreachable state");
+                return nil_obj();
         }
     } break;
     case LITERAL: {
-        switch (expr->as.literal.type){
-        case NUM_T: return newNum(*(double*)expr->as.literal.value);
-        case STR_T: return newString((char*)expr->as.literal.value);
-        case BOOL_T: return newBool(expr->as.literal.value ? true : false);
-        case NIL_T: return newObj(NIL_T);
-        default: plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
-            return newObj(NIL_T);
-        }
+        return expr->as.literal;
+        // switch (expr->as.literal.type){
+        // case NUM_T: return expr->as.literal;
+        // case STR_T: return newString((char*)expr->as.literal.value);
+        // case BOOL_T: return bool_obj(expr->as.literal.value ? true : false);
+        // case NIL_T: return nil_obj();
+        // default: plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
+        //     return nil_obj();
+        // }
     } break;
     case GROUPING: return evaluate(expr->as.group.expression, env); break;
     case VAREXPR: return get(env, expr->as.var.name); break;
     case ASSIGN: {
-        Obj* val = evaluate(expr->as.assign.value, env);
+        LiteralExpr val = evaluate(expr->as.assign.value, env);
         assign(env, expr->as.assign.name, val);
         return val;
     } break;
     default:
-        plerror(-1, RUNTIME_ERROR, "Unreachable state");
-        return newObj(NIL_T);
+        plerror(-1, -1, RUNTIME_ERR, "Unreachable state");
+        return nil_obj();
     }
 }
 
-void execute(Stmt* stmt, Env* env){
-    switch (stmt->type)
+void execute(Stmt stmt, Env* env){
+    switch (stmt.type)
     {
-    case EXPR_STMT: evaluate(stmt->as.expr.expression, env); break;
+    case EXPR_STMT: evaluate(stmt.as.expr.expression, env); break;
     case PRINT_STMT: {
-        Obj* val = evaluate(stmt->as.print.expression, env);
-        switch (val->type)
+        LiteralExpr val = evaluate(stmt.as.print.expression, env);
+        switch (val.type)
         {
-        case NUM_T:  printf("%f\n", val->as.num); break;
+        case NUM_T:  printf("%f\n", val.as.number); break;
         case NIL_T:  printf("nil\n"); break;
-        case BOOL_T: printf(val->as.boolean ? "true\n" : "false\n"); break;
-        case STR_T:  printf("%s\n", val->as.string); break;
+        case BOOL_T: printf(val.as.boolean ? "true\n" : "false\n"); break;
+        case STR_T:  printf("%s\n", val.as.string); break;
         default: break;
         }
     } break;
     case BLOCK_STMT: {
-        Env* local = createEnv(env);
-        for (size_t i = 0; i < stmt->as.block.list->index; i++){
-            execute(&stmt->as.block.list->statements[i], local);
+        Env* local = create_env(env);
+        for (size_t i = 0; i < stmt.as.block.list->index; i++){
+            execute(stmt.as.block.list->statements[i], local);
         }
-        freeEnv(local);
+        free_env(local);
     } break;
     case VAR_DECL_STMT:{
-        if (stmt->as.var.initializer != NULL){
-            Obj* init = evaluate(stmt->as.var.initializer, env);
-            define(env, stmt->as.var.name->lexeme, init);
-        } else define(env, stmt->as.var.name->lexeme, newObj(NIL_T)); 
+        char* lexeme = get_lexeme(stmt.as.var.name);
+        if (stmt.as.var.initializer != NULL){
+            LiteralExpr init = evaluate(stmt.as.var.initializer, env);
+            define(env, lexeme, init);
+        } else define(env, lexeme, nil_obj());
+        free(lexeme);
     } break;
     case IF_STMT: {
-        Obj* cond = evaluate(stmt->as.if_stmt.cond, env);
+        LiteralExpr cond = evaluate(stmt.as.if_stmt.cond, env);
         if (isTruthy(cond)){
-            execute(stmt->as.if_stmt.trueBranch, env);
-        } else if (stmt->as.if_stmt.falseBranch != NULL){
-            execute(stmt->as.if_stmt.falseBranch, env);
+            execute(*stmt.as.if_stmt.trueBranch, env);
+        } else if (stmt.as.if_stmt.falseBranch != NULL){
+            execute(*stmt.as.if_stmt.falseBranch, env);
         }
     } break;
     case WHILE_STMT: {
-        while (isTruthy(evaluate(stmt->as.while_stmt.cond, env))){
-            execute(stmt->as.while_stmt.body, env);
+        while (isTruthy(evaluate(stmt.as.while_stmt.cond, env))){
+            execute(*stmt.as.while_stmt.body, env);
         }
     } break;
     default: break;
     }
 }
 
-void interpret(StmtList* list, Env* env){
+void interpret(StmtList* list, Env* env, char* code_source){
+    source = code_source;
     for (size_t i = 0; i < list->index; i++){
-        execute(&list->statements[i], env);
+        execute(list->statements[i], env);
     }
 }
 

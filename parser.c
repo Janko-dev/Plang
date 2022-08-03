@@ -61,7 +61,7 @@ void free_expr(Expr* expr){
         free(expr->as.binary.right);
         expr->as.binary.right = NULL;
         free(expr);
-        expr = NULL;
+        // expr = NULL;
     } break;
     case TERNARY: {
         free_expr(expr->as.ternary.cond);
@@ -118,7 +118,7 @@ void free_stmt(Stmt stmt){
         free_expr(stmt.as.if_stmt.cond);
         free_stmt(*stmt.as.if_stmt.trueBranch);
         free(stmt.as.if_stmt.trueBranch);
-        free_stmt(*stmt.as.if_stmt.falseBranch);
+        if (stmt.as.if_stmt.falseBranch != NULL) free_stmt(*stmt.as.if_stmt.falseBranch);
         free(stmt.as.if_stmt.falseBranch);
     } break;
     case WHILE_STMT: {
@@ -280,22 +280,21 @@ static Token* advance(Parser* parser){
     return previous(parser);
 }
 
-static int get_column(Parser* parser){
+int get_column(Token* tok, char* source){
     int col;
-    size_t cur = peek(parser)->start;
-    for (col = 0; cur-col > 0 && parser->tokenizer->source[cur-col] != '\n'; col++);
+    size_t cur = tok->start;
+    for (col = 0; cur-col > 0 && source[cur-col] != '\n'; col++);
     return col;
 }
 
-static void synchronize(Parser* parser){
-    while(!check(parser, SEMICOLON)) advance(parser);
-}
+// static void synchronize(Parser* parser){
+//     while(!check(parser, SEMICOLON)) advance(parser);
+// }
 
 static void expect(Parser* parser, TokenType type){
     if (!check(parser, type)){
-        plerror(peek(parser)->line, get_column(parser), PARSE_ERR, "Expected '%s', but got '%s'", 
+        plerror(peek(parser)->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "Expected '%s', but got '%s'", 
             token_strings[type], token_strings[peek(parser)->type]);
-        // synchronize(parser);
     }
     advance(parser);
 }
@@ -341,7 +340,6 @@ void parse(Parser* parser){
     while(peek(parser)->type != ENDFILE){
         add_statement(parser->stmt_list, declaration(parser));
     }
-    // add_statement(parser->stmt_list, (Stmt){.type=NULL_STMT});
 }
 
 static Stmt declaration(Parser* parser){
@@ -471,7 +469,7 @@ static Expr* expression(Parser* parser){
             Token* name = expr->as.var.name;
             return assign_expr(name, value);
         }
-        plerror(equal->line, get_column(parser), PARSE_ERR, "Invalid assignment target");
+        plerror(equal->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "Invalid assignment target");
     } else {
         while(check(parser, QMARK)){
             advance(parser);
@@ -582,7 +580,7 @@ static Expr* primary(Parser* parser){
         result->as.literal.as.boolean = false;
     } else if (check(parser, TRUE)){
         result = literal_expr(BOOL_T);
-        result->as.literal.as.boolean = false;
+        result->as.literal.as.boolean = true;
     } else if (check(parser, NIL)){
         result = literal_expr(NIL_T);
     } else if (check(parser, LEFT_PAREN)){
@@ -590,8 +588,11 @@ static Expr* primary(Parser* parser){
         Expr* e = expression(parser);
         expect(parser, RIGHT_PAREN);
         result = group_expr(e);
+    } else if (check(parser, SEMICOLON)){
+        result = literal_expr(NIL_T);
+        return result;
     } else {
-        plerror(peek(parser)->line, get_column(parser), PARSE_ERR, "unhandled value, got '%s'", token_strings[peek(parser)->type]);
+        plerror(peek(parser)->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "unhandled value, got '%s'", token_strings[peek(parser)->type]);
     }
 
     advance(parser);
@@ -637,7 +638,7 @@ void expression_printer(Parser* parser, Expr* expr){
             case NUM_T: printf(" %f", expr->as.literal.as.number); break;
             case BOOL_T: printf(expr->as.literal.as.boolean ? " true" : " false"); break;
             case NIL_T: printf(" nil"); break;
-            case STR_T: printf(" %s", expr->as.literal.as.string); break;
+            case STR_T: printf(" \"%s\"", expr->as.literal.as.string); break;
             default: break;
         }
     } break;
@@ -668,19 +669,19 @@ void statement_printer(Parser* parser, Stmt stmt){
     case EXPR_STMT: {
         printf("( expr ");
         expression_printer(parser, stmt.as.expr.expression);
-        printf(" )\n");
+        printf(" )");
     } break;
     case PRINT_STMT: {
         printf("( print ");
         expression_printer(parser, stmt.as.expr.expression);
-        printf(" )\n");
+        printf(" )");
     } break;
     case VAR_DECL_STMT: {
         printf("( var decl ");
         print_lexeme(parser, stmt.as.var.name);
         if (stmt.as.var.initializer != NULL)
             expression_printer(parser, stmt.as.var.initializer);
-        printf(" )\n");
+        printf(" )");
     } break;
     case IF_STMT: {
         printf("( if ");
@@ -691,14 +692,14 @@ void statement_printer(Parser* parser, Stmt stmt){
             printf(" else ");
             statement_printer(parser, *stmt.as.if_stmt.falseBranch);
         }
-        printf(" )\n");
+        printf(" )");
     } break;
     case WHILE_STMT: {
         printf("( while ");
         expression_printer(parser, stmt.as.while_stmt.cond);
         printf(" then ");
         statement_printer(parser, *stmt.as.while_stmt.body);
-        printf(" )\n");
+        printf(" )");
     } break;
     case BLOCK_STMT: {
         printf("( block [ \n");
@@ -715,6 +716,7 @@ void print_statements(Parser* parser){
     for (size_t i = 0; i < parser->stmt_list->index; i++){
         statement_printer(parser, parser->stmt_list->statements[i]);
     }
+    printf("\n");
 }
 
 #pragma endregion AST

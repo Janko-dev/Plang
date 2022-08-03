@@ -11,7 +11,7 @@ char* read_source_file(const char* file_path){
     fseek(source_file, 0L, SEEK_END);
     long size = ftell(source_file);
     fseek(source_file, 0L, SEEK_SET);
-    char* source = malloc(size);
+    char* source = (char*)malloc(sizeof(char) * size + 1);
     if (source == NULL) {
         plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for source file");
         exit(1);
@@ -49,14 +49,12 @@ void put(Node* hashtable[HASHTABLE_SIZE], char* key, TokenType val){
             plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for hashtable node: %s", key);
             exit(1);
         }
-        
-        h_list->key = malloc(sizeof(char) * strlen(key));
+        h_list->key = malloc(sizeof(char) * strlen(key) + 1);
         if (h_list->key == NULL) {
             plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for hashtable node key");
             exit(1);
         } 
         strcpy(h_list->key, key);
-
         unsigned int h_val = hash(key);
         h_list->next = hashtable[h_val];
         hashtable[h_val] = h_list;
@@ -109,20 +107,22 @@ Tokenizer* create_tokenizer(char* text){
 
 void free_tokenizer(Tokenizer* tokenizer){
     for (size_t i = 0; i < tokenizer->list_index; i++){
-        free(tokenizer->tokens[i].lit.string);
-        tokenizer->tokens[i].lit.string = NULL;
+        // printf("%s\n", tokenizer->tokens[i].lit.string);
+        if (tokenizer->tokens[i].type == STRING){
+            free(tokenizer->tokens[i].lit.string);
+        }
     }
     free(tokenizer->tokens);
     tokenizer->tokens = NULL;
 
     for (int i = 0; i < HASHTABLE_SIZE; i++){
         Node* h = tokenizer->hashtable[i];
-        if (h == NULL) continue;
+        Node* tmp;
         while(h != NULL){
-            Node* tmp = h->next;
-            free(h->key);
-            free(h);
-            h = tmp;
+            tmp = h;
+            h = h->next;
+            free(tmp->key);
+            free(tmp);
         }
     }
     free(tokenizer);
@@ -178,27 +178,27 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
 
     char* literal = NULL;
     if (type == NUMBER){
-        literal = malloc(tokenizer->current_char - tokenizer->start_char + 1);
+        size_t n = tokenizer->current_char - tokenizer->start_char;
+        literal = malloc(n + 1);
         if (literal == NULL) {
             plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for number literal");
             exit(1);
         }
-        size_t i;
-        for (i = tokenizer->start_char; i < tokenizer->current_char; i++) 
-            literal[i-tokenizer->start_char] = tokenizer->source[i];
-        literal[i-tokenizer->start_char] = '\0';
+        for (size_t i = 0; i < n; i++) 
+            literal[i] = tokenizer->source[tokenizer->start_char+i];
+        literal[n] = '\0';
         tokenizer->tokens[tokenizer->list_index].lit.number = atof(literal);
         free(literal);
     } else if (type == STRING){
-        literal = malloc(tokenizer->current_char - tokenizer->start_char - 2 + 1); // -2 for quotes and +1 for '\0'
+        size_t n = tokenizer->current_char - tokenizer->start_char;
+        literal = malloc(n - 2 + 1); // -2 for quotes and +1 for '\0'
         if (literal == NULL) {
             plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for string literal");
             exit(1);
         }
-        size_t i;
-        for (i = tokenizer->start_char+1; i < tokenizer->current_char-1; i++) 
-            literal[i-(tokenizer->start_char+1)] = tokenizer->source[i];
-        literal[i-(tokenizer->start_char+1)] = '\0';
+        for (size_t i = 0; i < n-2; i++) 
+            literal[i] = tokenizer->source[tokenizer->start_char+i+1];
+        literal[n-1] = '\0';
         tokenizer->tokens[tokenizer->list_index].lit.string = literal;
     }
     tokenizer->list_index++;
@@ -212,7 +212,6 @@ void addString(Tokenizer* tokenizer){
         }
         advance(tokenizer);
     }
-    printf("\n");
 
     if (tokenizer->current_char >= tokenizer->source_len) {
         plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unterminated string literal");
@@ -236,7 +235,7 @@ void addNumber(Tokenizer* tokenizer){
 void addIdentifier(Tokenizer* tokenizer){
     while(isalnum(peek(tokenizer))) advance(tokenizer);
     size_t n = tokenizer->current_char - tokenizer->start_char;
-    char* buf = (char*)malloc(n*sizeof(char));
+    char* buf = (char*)malloc(n*sizeof(char)+1);
     if (buf == NULL) {
         plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for string literal\n");
         exit(1);
