@@ -1,6 +1,11 @@
-var x = "hello";
 var i = 0;
+var j = 1;
 
-while (i < 5){
-    print i = i + 1;
-}  
+print i;
+print j;
+for (var count = 0; count < 10; count = count + 1){
+    var x = i + j;
+    print x;
+    i = j;
+    j = x;
+}

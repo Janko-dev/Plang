@@ -36,6 +36,7 @@ typedef struct {
     size_t line;
     size_t start;
     size_t count;
+    char* source;
     union {
         char* string;
         double number;
@@ -66,6 +67,8 @@ typedef struct {
 char* read_source_file(const char* file_path);
 Tokenizer* create_tokenizer(char* text);
 void free_tokenizer(Tokenizer* tokenizer);
+
+int get_colum(Token* tok);
 
 void tokenize(Tokenizer* tokenizer);
 void print_tokens(Tokenizer* tokenizer);

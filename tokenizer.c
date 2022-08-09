@@ -129,12 +129,10 @@ void free_tokenizer(Tokenizer* tokenizer){
     tokenizer = NULL;
 }
 
-static int get_column(Tokenizer* tokenizer){
+int get_column(Token* tok){
     int col;
-    size_t cur = tokenizer->current_char;
-    // TODO: when a single " is in the .plang file, segfault happens
-    // there seems to be a relationship between a single " and malloc NULL
-    for (col = 1; cur-col > 0 && tokenizer->source[cur-col] != '\n'; col++);
+    size_t cur = tok->start;
+    for (col = 0; cur-col > 0 && tok->source[cur-col] != '\n'; col++);
     return col;
 }
 
@@ -173,7 +171,8 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
         .start = tokenizer->start_char,
         .count = tokenizer->current_char,
         .line = tokenizer->current_line,
-        .type = type
+        .type = type,
+        .source = tokenizer->source
     };
 
     char* literal = NULL;
@@ -190,15 +189,15 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
         tokenizer->tokens[tokenizer->list_index].lit.number = atof(literal);
         free(literal);
     } else if (type == STRING){
-        size_t n = tokenizer->current_char - tokenizer->start_char;
-        literal = malloc(n - 2 + 1); // -2 for quotes and +1 for '\0'
+        size_t n = tokenizer->current_char - tokenizer->start_char - 2;
+        literal = malloc(n + 1); // -2 for quotes and +1 for '\0'
         if (literal == NULL) {
             plerror(-1, -1, MEMORY_ERR, "Couldn't allocate memory for string literal");
             exit(1);
         }
-        for (size_t i = 0; i < n-2; i++) 
+        for (size_t i = 0; i < n; i++) 
             literal[i] = tokenizer->source[tokenizer->start_char+i+1];
-        literal[n-1] = '\0';
+        literal[n] = '\0';
         tokenizer->tokens[tokenizer->list_index].lit.string = literal;
     }
     tokenizer->list_index++;
@@ -207,14 +206,14 @@ void addToken(Tokenizer* tokenizer, TokenType type) {
 void addString(Tokenizer* tokenizer){
     while(peek(tokenizer) != '"' && tokenizer->current_char < tokenizer->source_len){
         if (peek(tokenizer) == '\n') {
-            plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unterminated string literal");
+            plerror(tokenizer->current_line, get_column(&tokenizer->tokens[tokenizer->list_index]), TOKEN_ERR, "Unterminated string literal");
             return;
         }
         advance(tokenizer);
     }
 
     if (tokenizer->current_char >= tokenizer->source_len) {
-        plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unterminated string literal");
+        plerror(tokenizer->current_line, get_column(&tokenizer->tokens[tokenizer->list_index]), TOKEN_ERR, "Unterminated string literal");
         return;
     }
 
@@ -302,7 +301,7 @@ void tokenize(Tokenizer* tokenizer){
                 } else if (isalpha(c)) {
                     addIdentifier(tokenizer);
                 } else {
-                    plerror(tokenizer->current_line, get_column(tokenizer), TOKEN_ERR, "Unexpected character '%c'", c);
+                    plerror(tokenizer->current_line, get_column(&tokenizer->tokens[tokenizer->list_index]), TOKEN_ERR, "Unexpected character '%c'", c);
                 }
             } break;
         }
@@ -325,7 +324,8 @@ void print_tokens(Tokenizer* tokenizer){
         printf("[Line %d] %11s: ", 
             tokenizer->tokens[i].line, 
             token_strings[t]);
-        for (size_t j = tokenizer->tokens[i].start; j < tokenizer->tokens[i].count; j++){
+        
+        for (size_t j = tokenizer->tokens[i].start; t != ENDFILE && j < tokenizer->tokens[i].count; j++){
             printf("%c", tokenizer->source[j]);
         }
 

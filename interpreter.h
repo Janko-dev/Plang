@@ -4,15 +4,6 @@
 #include "tokenizer.h"
 #include "parser.h"
 
-// typedef struct {
-//     ValueType type;
-//     union {
-//         double num;
-//         char* string;
-//         bool boolean;
-//     } as;
-// } Obj;
-
 #define ENV_SIZE 100
 
 typedef struct envList EnvMap;

@@ -1,5 +1,22 @@
 # Plang
 A Toy programming language named Plang (short for Programming lang) written in C for the purpose of understanding the concepts of language design and implementation. 
+The tokenizer scans the tokens of the language and the parser builds the Abstract Syntax Tree. Thereafter, the interpreter recursively walks the AST nodes and performs actions upon them. 
+
+## Quick start
+To run a .plang file:
+```
+$ make
+$ ./plang.exe fib.plang
+``` 
+To start the REPL:
+```
+$ make
+$ ./plang.exe
+Welcome to the REPL (Read, Evaluate, Print, Loop) environment
+> print 2+2;
+( print ( +  2.000000 2.000000 ) )
+4.000000
+``` 
 
 ## Grammar rules
 The blocks below define the grammar for Plang.
@@ -18,16 +35,25 @@ Declaration = VarDecl |
               Stmt
 VarDecl     = "var" Identifier ("=" Expression)?
 Stmt        = PrintStmt | 
-              Expression
+              Expression |
+              IfStmt |
+              WhileStmt |
+              ForStmt |
+              BlockStmt
 PrintStmt   = "print" Expression
+IfStmt      = "if (" Expression ")" Stmt ("else" Stmt)?
+WhileStmt   = "while (" Expression ")" Stmt
+ForStmt     = "for (" (VarDecl | Expression | ";") Expression? ";" Expression? ")" Stmt
+BlockStmt   = "{" (Declaration ";")* "}"
 ```
 
 ### Expressions
 ```ABNF
-Expression  = Equality |
-              Assignment |
+Expression  = Assignment |
               Ternary
-Assignment  = Identifier "=" Expression
+Assignment  = Identifier "=" Expression | Logic_or
+Logic_or    = Logic_and ("or" Logic_and)*
+Logic_and   = Equality ("and" Equality)*
 Ternary     = Expression "?" Expression : Expression
 
 Equality    = Comparison (("!=" | "==") Comparison)*

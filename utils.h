@@ -1,10 +1,7 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
-#include <stdarg.h>
 #include <stdbool.h>
-#include <stdlib.h>
-#include <stdio.h>
 
 typedef enum {
     TOKEN_ERR,
@@ -19,6 +16,11 @@ extern bool hadError;
 #endif  //_UTILS_H
 
 #ifdef UTILS_IMPLEMENT
+
+#include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+
 static char* errtypes[] = {"Tokenization Error", "Parse Error", "Runtime Error", "Memory Error"};
 
 static void plerror(int line, int col, ErrorType type, const char* message, ...){

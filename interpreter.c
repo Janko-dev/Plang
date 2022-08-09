@@ -105,7 +105,7 @@ void assign(Env* env, Token* name, LiteralExpr value){
             assign(env->enclosing, name, value);
             return;
         }
-        plerror(name->line, get_column(name, source), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
+        plerror(name->line, get_column(name), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
         free(lexeme);
         return;
     }
@@ -121,7 +121,7 @@ LiteralExpr get(Env* env, Token* name){
             free(lexeme);
             return get(env->enclosing, name);
         }
-        plerror(name->line, get_column(name, source), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
+        plerror(name->line, get_column(name), RUNTIME_ERR, "Undefined variable '%s'", lexeme);
         free(lexeme);
         return nil_obj();
     }
@@ -197,7 +197,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case GREATER: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'greater than' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -205,7 +205,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case GREATER_EQUAL: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'greater than or equal to' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -213,7 +213,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case LESS: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'less than' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -221,7 +221,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case LESS_EQUAL: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'less than or equal to' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -229,7 +229,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case STAR: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'times' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -237,19 +237,19 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         }
         case SLASH: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'division' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
             if (right.as.number == 0) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Division by zero error");
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Division by zero error");
                 return nil_obj();
             }
             return num_obj(left.as.number / right.as.number);
         }
         case MINUS: {
             if (left.type != NUM_T || right.type != NUM_T) {
-                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
+                plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'minus' operator is not defined for %s and %s", 
                     valueTypes[left.type], valueTypes[right.type]);
                 return nil_obj();
             }
@@ -268,12 +268,12 @@ LiteralExpr evaluate(Expr* expr, Env* env){
                 res[len_left+len_right] = '\0';
                 return string_obj(res);
             }
-            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
+            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Type mismatch, binary 'plus' operation is not defined for %s and %s", 
                 valueTypes[left.type], valueTypes[right.type]);
             return nil_obj();
         }
         default:
-            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Unreachable binary operator");
+            plerror(expr->as.binary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Unreachable binary operator");
             return nil_obj();
         }
     } break;
@@ -290,7 +290,7 @@ LiteralExpr evaluate(Expr* expr, Env* env){
         switch(expr->as.unary.op->type){
             case MINUS: {
                 if (right.type != NUM_T) {
-                    plerror(expr->as.unary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
+                    plerror(expr->as.unary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Expected type '%s', but got '%s'", valueTypes[NUM_T], valueTypes[right.type]);
                     return nil_obj();
                 }
                 right.as.number = -right.as.number;
@@ -302,20 +302,12 @@ LiteralExpr evaluate(Expr* expr, Env* env){
                 return right;
             }
             default: 
-                plerror(expr->as.unary.op->line, get_column(expr->as.binary.op, source), RUNTIME_ERR, "Unreachable state");
+                plerror(expr->as.unary.op->line, get_column(expr->as.binary.op), RUNTIME_ERR, "Unreachable state");
                 return nil_obj();
         }
     } break;
     case LITERAL: {
         return expr->as.literal;
-        // switch (expr->as.literal.type){
-        // case NUM_T: return expr->as.literal;
-        // case STR_T: return newString((char*)expr->as.literal.value);
-        // case BOOL_T: return bool_obj(expr->as.literal.value ? true : false);
-        // case NIL_T: return nil_obj();
-        // default: plerror(expr->as.unary.op->line, RUNTIME_ERROR, "Unreachable state");
-        //     return nil_obj();
-        // }
     } break;
     case GROUPING: return evaluate(expr->as.group.expression, env); break;
     case VAREXPR: return get(env, expr->as.var.name); break;

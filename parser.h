@@ -12,6 +12,7 @@ typedef enum {
     GROUPING,
     VAREXPR,
     ASSIGN,
+    CALL
 } ExprType;
 
 typedef enum {
@@ -23,6 +24,7 @@ typedef enum {
     IF_STMT,
     WHILE_STMT,
     FOR_STMT,
+    FUN_STMT,
 } StmtType;
 
 typedef enum {
@@ -31,6 +33,10 @@ typedef enum {
     STR_T,
     BOOL_T
 } ValueType;
+
+// typedef struct {
+
+// }
 
 // Expressions
 typedef struct Expr Expr;
@@ -151,6 +157,6 @@ void free_parser(Parser* parser);
 void parse(Parser* parser);
 void print_statements(Parser* parser);
 
-int get_column(Token* tok, char* source);
+int get_column(Token* tok);
 
 #endif //_PARSER_H

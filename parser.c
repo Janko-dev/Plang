@@ -61,7 +61,7 @@ void free_expr(Expr* expr){
         free(expr->as.binary.right);
         expr->as.binary.right = NULL;
         free(expr);
-        // expr = NULL;
+        expr = NULL;
     } break;
     case TERNARY: {
         free_expr(expr->as.ternary.cond);
@@ -280,20 +280,13 @@ static Token* advance(Parser* parser){
     return previous(parser);
 }
 
-int get_column(Token* tok, char* source){
-    int col;
-    size_t cur = tok->start;
-    for (col = 0; cur-col > 0 && source[cur-col] != '\n'; col++);
-    return col;
-}
-
 // static void synchronize(Parser* parser){
 //     while(!check(parser, SEMICOLON)) advance(parser);
 // }
 
 static void expect(Parser* parser, TokenType type){
     if (!check(parser, type)){
-        plerror(peek(parser)->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "Expected '%s', but got '%s'", 
+        plerror(peek(parser)->line, get_column(peek(parser)), PARSE_ERR, "Expected '%s', but got '%s'", 
             token_strings[type], token_strings[peek(parser)->type]);
     }
     advance(parser);
@@ -469,7 +462,7 @@ static Expr* expression(Parser* parser){
             Token* name = expr->as.var.name;
             return assign_expr(name, value);
         }
-        plerror(equal->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "Invalid assignment target");
+        plerror(equal->line, get_column(peek(parser)), PARSE_ERR, "Invalid assignment target");
     } else {
         while(check(parser, QMARK)){
             advance(parser);
@@ -592,7 +585,7 @@ static Expr* primary(Parser* parser){
         result = literal_expr(NIL_T);
         return result;
     } else {
-        plerror(peek(parser)->line, get_column(peek(parser), parser->tokenizer->source), PARSE_ERR, "unhandled value, got '%s'", token_strings[peek(parser)->type]);
+        plerror(peek(parser)->line, get_column(peek(parser)), PARSE_ERR, "unhandled value, got '%s'", token_strings[peek(parser)->type]);
     }
 
     advance(parser);

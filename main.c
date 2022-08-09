@@ -1,4 +1,3 @@
-// #include "lexer.h"
 #include "tokenizer.h"
 #include "parser.h"
 #include "interpreter.h"
@@ -10,22 +9,16 @@ void run(char* source, Env* env){
 
     Tokenizer* tokenizer = create_tokenizer(source);
     tokenize(tokenizer);
+    // if (!hadError) print_tokens(tokenizer);
 
     Parser* parser = create_parser(tokenizer);
-    if (!hadError) print_tokens(parser->tokenizer);
-
     parse(parser);
-    print_statements(parser);
+    if (!hadError) print_statements(parser);
 
-    interpret(parser->stmt_list, env, source);
+    if (!hadError) interpret(parser->stmt_list, env, source);
 
     free_parser(parser);
-    // free_tokenizer(tokenizer);
-    // free(source);
-
-    // printf("TEST\n");
-    // Tokenizer* tokenizer2 = create_tokenizer(source);
-    // printf("TEST2\n");
+    free_tokenizer(tokenizer);
 }
 
 void runFile(const char* path){
@@ -33,6 +26,7 @@ void runFile(const char* path){
     Env* env = create_env(NULL);
     run(source, env);
     free_env(env);
+    free(source);
     if (hadError) exit(1);
 }
 
