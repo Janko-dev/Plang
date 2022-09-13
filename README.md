@@ -29,7 +29,7 @@ Furthermore, a variant of the Baukus-Naur form (BNF) is used for the grammar, wh
 - (*A* | *B*) means choose either *A* or *B*
 
 ### Toplevel statements
-```ABNF
+```ebnf
 Program     = (Declaration ";")*
 Declaration = VarDecl | 
               Stmt
@@ -48,7 +48,7 @@ BlockStmt   = "{" (Declaration ";")* "}"
 ```
 
 ### Expressions
-```ABNF
+```ebnf
 Expression  = Assignment |
               Ternary
 Assignment  = Identifier "=" Expression | Logic_or
@@ -71,7 +71,7 @@ Primary     = Number |
 ```
 
 ### Primary types 
-```ABNF
+```ebnf
 Number      = DIGIT+ ("." DIGIT+)?
 String      = "\"" (CHAR)* "\""
 Boolean     = "true" | "false"
